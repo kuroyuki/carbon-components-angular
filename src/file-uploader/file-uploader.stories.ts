@@ -105,7 +105,7 @@ class FolderUploaderStory {
 	static notificationCount = 0;
 
 	@Input() notificationId = `notification-${FolderUploaderStory.notificationCount}`;
-	@Input() folders = new Set();
+	@Input() folders = new Map<string, FolderItem>();
 	@Input() title;
 	@Input() description;
 	@Input() buttonText;
@@ -119,16 +119,17 @@ class FolderUploaderStory {
 		FolderUploaderStory.notificationCount++;
 	}
 
-	onUpload() {
-		let filesArray = Array.from<any>(this.folders);
-		this.folders.forEach(fileItem => {
-                if (!fileItem.uploaded) {
-				fileItem.state = "upload";
-				setTimeout(() => {
-					fileItem.state = "complete";
-					fileItem.uploaded = true;
-					console.log(fileItem);
-				}, 1500);
+	onUpload() {		
+		this.folders.forEach(folderItem => {
+			if (!folderItem.uploaded) {
+				folderItem.state = "upload";
+				folderItem.files.forEach(f=>
+					setTimeout(() => {
+						f.state = "complete";
+						f.uploaded = true;
+						folderItem.files.every(f=>f.state == "upload") ? folderItem.state = "upload" : folderItem.state = "complete"
+					}, 1500)
+				)			
 			}
 		});
 	}
