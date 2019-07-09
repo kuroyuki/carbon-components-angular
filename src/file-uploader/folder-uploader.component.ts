@@ -1,7 +1,6 @@
-import { Component, Input} from "@angular/core";
+import { Component, Input } from "@angular/core";
 import { FileUploader } from "./file-uploader.component";
 import { FileItem } from "./file-item.interface";
-import { Folder } from "./folder.component";
 import { FolderItem } from "./folder-item.inetrface";
 
 /**
@@ -49,23 +48,24 @@ import { FolderItem } from "./folder-item.inetrface";
 		</ng-template>
 	`
 })
-export class FolderUploader extends FileUploader{
-    /**
+export class FolderUploader extends FileUploader {
+	/**
 	 * The list of folders that have been submitted to be uploaded
 	 */
-    @Input() folders = new Set<FolderItem>();
-    
-    onFilesAdded() {
-        const files = this.fileInput.nativeElement.files;
+	@Input() folders = new Set<FolderItem>();
+
+	onFilesAdded() {
+		const files = this.fileInput.nativeElement.files;
 		if (!this.multiple) {
 			this.files.clear();
-        }
-        const folderItem: FolderItem = {
-            uploaded: false,
-            state: "edit",
-            name : "new",
-            files : []
-        }
+		}
+		const folderItem: FolderItem = {
+			uploaded: false,
+			state: "edit",
+			name : "new",
+			files : []
+		};
+
 		for (let file of files) {
 			const fileItem: FileItem = {
 				uploaded: false,
@@ -75,13 +75,12 @@ export class FolderUploader extends FileUploader{
 			folderItem.files.push(fileItem);
 		}
 
-        this.value = this.files;
-        let filename = folderItem.files[0].file["webkitRelativePath"];
-        
-        folderItem.name = filename.substr(0, filename.lastIndexOf("/"))
-        this.folders.add(folderItem)
-    }
-    removeFolder(folderItem) {
+		this.value = this.files;
+		let filename = folderItem.files[0].file["webkitRelativePath"];
+		folderItem.name = filename.substr(0, filename.lastIndexOf("/"));
+		this.folders.add(folderItem);
+	}
+	removeFolder(folderItem) {
 		this.folders.delete(folderItem);
 		this.filesChange.emit(this.folders);
 	}
