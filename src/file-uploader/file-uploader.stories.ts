@@ -16,6 +16,7 @@ import {
 	DocumentationModule
 } from "../";
 import { NotificationService } from "../notification/notification.service";
+import { FileItem } from "./file-item.interface";
 
 @Component({
 	selector: "app-file-uploader",
@@ -119,17 +120,16 @@ class FolderUploaderStory {
 		FolderUploaderStory.notificationCount++;
 	}
 
-	onUpload() {		
+	onUpload() {
 		this.folders.forEach(folderItem => {
 			if (!folderItem.uploaded) {
 				folderItem.state = "upload";
-				folderItem.files.forEach(f=>
-					setTimeout(() => {
+				folderItem.files.forEach(f => setTimeout(() => {
 						f.state = "complete";
 						f.uploaded = true;
-						folderItem.files.every(f=>f.state == "upload") ? folderItem.state = "upload" : folderItem.state = "complete"
-					}, 1500)
-				)			
+						folderItem.files.every(_f => _f.state === "upload") ? folderItem.state = "upload" : folderItem.state = "complete";
+					},
+				1500));
 			}
 		});
 	}

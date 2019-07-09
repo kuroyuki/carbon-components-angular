@@ -52,25 +52,24 @@ export class FolderUploader extends FileUploader {
 	/**
 	 * The list of folders that have been submitted to be uploaded
 	 */
-	@Input() folders:Map<string, FolderItem>;
+	@Input() folders: Map<string, FolderItem>;
 
 	onFilesAdded() {
 		const files = this.fileInput.nativeElement.files;
-	
 		for (let file of files) {
 			let folderName = file["webkitRelativePath"].substr(0, file["webkitRelativePath"].lastIndexOf("/"));
 
-			let folderItem = this.folders.get(folderName)			
-			if(!folderItem){
+			let folderItem = this.folders.get(folderName);
+			if (!folderItem) {
 				folderItem = { name: folderName, uploaded: false, state: "edit", files : []};
-				this.folders.set(folderName, folderItem)
+				this.folders.set(folderName, folderItem);
 			}
-			
+
 			folderItem.files.push({
 				uploaded: false,
 				state: "edit",
 				file: file
-			}); 
+			});
 		}
 	}
 	removeFolder(folderId) {
