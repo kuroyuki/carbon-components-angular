@@ -7,12 +7,14 @@ import { FileUploader } from "./file-uploader.component";
 import { File } from "./file.component";
 import { ButtonModule } from "../button/button.module";
 import { LoadingModule } from "../loading/loading.module";
+import { FolderUploader } from "./folder-uploader.component";
+import { Folder } from "./folder.component";
 
 export { FileUploader } from "./file-uploader.component";
 
 @NgModule({
-	declarations: [FileUploader, File],
-	exports: [FileUploader],
+	declarations: [FileUploader, FolderUploader, File, Folder],
+	exports: [FileUploader, FolderUploader],
 	imports: [
 		CommonModule,
 		ButtonModule,

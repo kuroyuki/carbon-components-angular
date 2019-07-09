@@ -82,6 +82,58 @@ class FileUploaderStory {
 	}
 }
 
+
+@Component({
+	selector: "app-folder-uploader",
+	template: `
+		<ibm-folder-uploader
+			[title]="title"
+			[description]="description"
+			[buttonText]="buttonText"
+			[accept]="accept"
+			[skeleton]="skeleton"
+			[(folders)]="folders">
+		</ibm-folder-uploader>
+
+		<div [id]="notificationId" style="width: 300px; margin-top: 20px"></div>
+		<button ibmButton *ngIf="folders && folders.size > 0" (click)="onUpload()">
+			Upload
+		</button>
+	`
+})
+class FolderUploaderStory {
+	static notificationCount = 0;
+
+	@Input() notificationId = `notification-${FolderUploaderStory.notificationCount}`;
+	@Input() folders = new Set();
+	@Input() title;
+	@Input() description;
+	@Input() buttonText;
+	@Input() accept;
+	@Input() multiple;
+	@Input() skeleton = false;
+
+	protected maxSize = 500000;
+
+	constructor(protected notificationService: NotificationService) {
+		FolderUploaderStory.notificationCount++;
+	}
+
+	onUpload() {
+		let filesArray = Array.from<any>(this.folders);
+		this.folders.forEach(fileItem => {
+                if (!fileItem.uploaded) {
+				fileItem.state = "upload";
+				setTimeout(() => {
+					fileItem.state = "complete";
+					fileItem.uploaded = true;
+					console.log(fileItem);
+				}, 1500);
+			}
+		});
+	}
+}
+
 @Component({
 	selector: "app-ngmodel-file-uploader",
 	template: `
@@ -149,7 +201,7 @@ storiesOf("File Uploader", module)
 	.addDecorator(
 		moduleMetadata({
 			imports: [FileUploaderModule, NotificationModule, ButtonModule, DocumentationModule],
-			declarations: [FileUploaderStory, NgModelFileUploaderStory]
+			declarations: [FileUploaderStory, FolderUploaderStory, NgModelFileUploaderStory]
 		})
 	)
 	.addDecorator(withKnobs)
@@ -169,6 +221,22 @@ storiesOf("File Uploader", module)
 			buttonText: text("Button text", "Add files"),
 			accept: array("Accepted file extensions", [".png", ".jpg"], ","),
 			multiple: boolean("Supports multiple files", true)
+		}
+	}))
+	.add("Folder upload", () => ({
+		template: `
+			<app-folder-uploader
+				[title]="title"
+				[description]="description"
+				[buttonText]="buttonText"
+				[accept]="accept">
+			</app-folder-uploader>
+		`,
+		props: {
+			title: text("The title", "Upload JSON"),
+			description: text("The description", "only .json files."),
+			buttonText: text("Button text", "Add folder"),
+			accept: array("Accepted file extensions", [".json"], ",")
 		}
 	}))
 	.add("Using ngModel", () => ({
