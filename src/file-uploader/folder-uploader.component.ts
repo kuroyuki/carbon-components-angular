@@ -36,7 +36,7 @@ import { FolderItem } from "./folder-item.inetrface";
 					tabindex="-1"
 					(change)="onFilesAdded()"/>
 				<div class="bx--file-container">
-					<ibm-folder *ngFor="let f of folders.keys()" [folderItem]="folders.get(f)" (remove)="removeFolder(f)"></ibm-folder>
+					<ibm-folder *ngFor="let f of folders" [folderItem]="f" (remove)="removeFolder(f)"></ibm-folder>
 				</div>
 			</div>
 		</ng-container>
@@ -52,17 +52,17 @@ export class FolderUploader extends FileUploader {
 	/**
 	 * The list of folders that have been submitted to be uploaded
 	 */
-	@Input() folders: Map<string, FolderItem>;
+	@Input() folders: FolderItem[];
 
 	onFilesAdded() {
 		const files = this.fileInput.nativeElement.files;
 		for (let file of files) {
 			let folderName = file["webkitRelativePath"].substr(0, file["webkitRelativePath"].lastIndexOf("/"));
 
-			let folderItem = this.folders.get(folderName);
+			let folderItem = this.folders.find(f => f.name === folderName);
 			if (!folderItem) {
 				folderItem = { name: folderName, uploaded: false, state: "edit", files : []};
-				this.folders.set(folderName, folderItem);
+				this.folders.push(folderItem);
 			}
 
 			folderItem.files.push({
@@ -72,8 +72,8 @@ export class FolderUploader extends FileUploader {
 			});
 		}
 	}
-	removeFolder(folderId) {
-		this.folders.delete(folderId);
+	removeFolder(folder) {
+		this.folders.splice(this.folders.indexOf(folder));
 		this.filesChange.emit(this.folders);
 	}
 }

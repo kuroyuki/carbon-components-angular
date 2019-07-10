@@ -97,7 +97,7 @@ class FileUploaderStory {
 		</ibm-folder-uploader>
 
 		<div [id]="notificationId" style="width: 300px; margin-top: 20px"></div>
-		<button ibmButton *ngIf="folders && folders.size > 0" (click)="onUpload()">
+		<button ibmButton *ngIf="folders && folders.length > 0" (click)="onUpload()">
 			Upload
 		</button>
 	`
@@ -106,7 +106,7 @@ class FolderUploaderStory {
 	static notificationCount = 0;
 
 	@Input() notificationId = `notification-${FolderUploaderStory.notificationCount}`;
-	@Input() folders = new Map<string, FolderItem>();
+	@Input() folders = [];
 	@Input() title;
 	@Input() description;
 	@Input() buttonText;
