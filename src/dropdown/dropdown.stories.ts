@@ -1,18 +1,170 @@
+import {
+	Component,
+	OnInit,
+	Input,
+	Output,
+	EventEmitter
+} from "@angular/core";
+import {
+	ReactiveFormsModule,
+	FormBuilder,
+	FormGroup,
+	FormControl
+} from "@angular/forms";
+
 import { storiesOf, moduleMetadata } from "@storybook/angular";
 import { action } from "@storybook/addon-actions";
-import { withKnobs, select, boolean, object, text } from "@storybook/addon-knobs/angular";
+import {
+	withKnobs,
+	select,
+	boolean,
+	object,
+	text
+} from "@storybook/addon-knobs/angular";
 
-import { DropdownModule, DocumentationModule } from "../";
 import { of } from "rxjs";
-import { PlaceholderModule } from "../placeholder/placeholder.module";
+import { PlaceholderModule } from "../placeholder/index";
+import { DocumentationModule } from "./../documentation-component/documentation.module";
+import { DropdownModule } from "./dropdown.module";
+import { ModalModule } from "../modal";
 
-storiesOf("Dropdown", module)
+const modalText =
+	`Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi non egestas neque.
+	Etiam aliquet nisl non volutpat vehicula.
+	Aliquam finibus sapien et erat suscipit euismod.
+	Sed dapibus condimentum nisl, eu condimentum felis tempor sit amet. Pellentesque tempus velit vel nisi scelerisque facilisis.
+	Ut dapibus nibh ac suscipit venenatis.
+	Aliquam ex purus, consequat eu volutpat vel, scelerisque vel leo. Nunc congue tellus lectus, pretium lobortis erat mattis congue.
+	Ut dapibus nibh ac suscipit venenatis.
+	Aliquam ex purus, consequat eu volutpat vel, scelerisque vel leo. Nunc congue tellus lectus, pretium lobortis erat mattis congue.
+	Integer facilisis, erat nec iaculis gravida, est libero ornare mauris, venenatis mollis risus eros et metus.
+	Sed ornare massa tristique arcu pulvinar fermentum.
+	Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi non egestas neque.
+	Etiam aliquet nisl non volutpat vehicula.
+	Aliquam finibus sapien et erat suscipit euismod.
+	Sed dapibus condimentum nisl, eu condimentum felis tempor sit amet. Pellentesque tempus velit vel nisi scelerisque facilisis.
+	Ut dapibus nibh ac suscipit venenatis.
+	Aliquam ex purus, consequat eu volutpat vel, scelerisque vel leo. Nunc congue tellus lectus, pretium lobortis erat mattis congue.
+	Ut dapibus nibh ac suscipit venenatis.
+	Aliquam ex purus, consequat eu volutpat vel, scelerisque vel leo. Nunc congue tellus lectus, pretium lobortis erat mattis congue.
+	Integer facilisis, erat nec iaculis gravida, est libero ornare mauris, venenatis mollis risus eros et metus.
+	Sed ornare massa tristique arcu pulvinar fermentum.`;
+
+const getProps = (overrides = {}) => Object.assign({}, {
+	invalid: boolean("Invalid", false),
+	size: select("Size", ["sm", "md", "xl"], "md"),
+	invalidText: "This is not a validation text",
+	warn: boolean("Show the warning state", false),
+	warnText: text("Text for the warning", "This is a warning"),
+	disabled: boolean("disabled", false),
+	label: text("Label", "Dropdown label"),
+	helperText: text("Helper text", "Optional helper text."),
+	items: object("items", [
+		{ content: "one" },
+		{ content: "two", selected: true },
+		{ content: "three" },
+		{ content: "four" }
+	]),
+	selected: action("Selected fired for dropdown"),
+	onClose: action("Dropdown closed"),
+	theme: select("theme", ["dark", "light"], "dark"),
+	dropUp: boolean("Drop up", false)
+}, overrides);
+
+@Component({
+	selector: "app-reactive-forms",
+	template: `
+		<form [formGroup]="formGroup">
+			<div style="width: 300px">
+				<ibm-dropdown
+					[label]="label"
+					[helperText]="helperText"
+					[invalid]="invalid"
+					[invalidText]="invalidText"
+					[theme]="theme"
+					[selectionFeedback]="selectionFeedback"
+					placeholder="Multi-select"
+					value="oid"
+					(selected)="selected.emit($event)"
+					(onClose)="onClose.emit($event)"
+					formControlName="roles">
+					<ibm-dropdown-list [items]="items"></ibm-dropdown-list>
+				</ibm-dropdown>
+			</div>
+		</form>
+
+		<br>
+
+		<code>{{ formGroup.get("roles").value | json }}</code>
+	`
+})
+class ReactiveFormsStory implements OnInit {
+	public formGroup: FormGroup;
+
+	@Input() items = [];
+	@Input() label = "";
+	@Input() helperText = "";
+	@Input() invalid = false;
+	@Input() invalidText = "";
+	@Input() selectionFeedback = "top-after-reopen";
+	@Input() set disabled(value) {
+		if (!this.formGroup) { return; }
+		if (value) {
+			this.formGroup.get("roles").disable();
+		} else {
+			this.formGroup.get("roles").enable();
+		}
+	}
+	@Output() selected = new EventEmitter();
+	@Output() onClose = new EventEmitter();
+
+	constructor(protected formBuilder: FormBuilder) { }
+
+	ngOnInit() {
+		this.formGroup = this.formBuilder.group({
+			roles: new FormControl()
+		});
+		this.selectRoles();
+	}
+
+	private selectRoles() {
+		this.formGroup.get("roles").setValue(1);
+	}
+}
+
+@Component({
+	selector: "app-dropdown-modal",
+	template: `
+        <ibm-modal [open]="true">
+            <ibm-modal-header>Header label</ibm-modal-header>
+            <section class="bx--modal-content">
+                <h1>Sample modal works.</h1>
+                <p class="bx--modal-content__text">{{modalText}}</p>
+                <div style="width: 300px">
+					<ibm-dropdown placeholder="Select">
+						<ibm-dropdown-list [items]="items"></ibm-dropdown-list>
+					</ibm-dropdown>
+				</div>
+                <p class="bx--modal-content__text">{{modalText}}</p>
+            </section>
+        </ibm-modal>
+    `
+})
+class DropdownModal {
+	@Input() modalText: string;
+	@Input() items: any[];
+}
+
+storiesOf("Components|Dropdown", module)
 	.addDecorator(
 		moduleMetadata({
+			declarations: [ReactiveFormsStory, DropdownModal],
 			imports: [
 				DropdownModule,
+				ModalModule,
 				PlaceholderModule,
-				DocumentationModule
+				DocumentationModule,
+				ReactiveFormsModule
 			]
 		})
 	)
@@ -23,6 +175,12 @@ storiesOf("Dropdown", module)
 			<ibm-dropdown
 				[label]="label"
 				[helperText]="helperText"
+				[size]="size"
+				[dropUp]="dropUp"
+				[invalid]="invalid"
+				[invalidText]="invalidText"
+				[warn]="warn"
+				[warnText]="warnText"
 				[theme]="theme"
 				placeholder="Select"
 				[disabled]="disabled"
@@ -31,22 +189,8 @@ storiesOf("Dropdown", module)
 				<ibm-dropdown-list [items]="items"></ibm-dropdown-list>
 			</ibm-dropdown>
 		</div>
-		<ibm-placeholder></ibm-placeholder>
 	`,
-		props: {
-			disabled: boolean("disabled", false),
-			label: text("Label", "Dropdown label"),
-			helperText: text("Helper text", "Optional helper text."),
-			items: object("items", [
-				{ content: "one" },
-				{ content: "two" },
-				{ content: "three" },
-				{ content: "four" }
-			]),
-			selected: action("Selected fired for dropdown"),
-			onClose: action("Dropdown closed"),
-			theme: select("theme", ["dark", "light"], "dark")
-		}
+		props: getProps()
 	}))
 	.add("Multi-select", () => ({
 		template: `
@@ -54,6 +198,11 @@ storiesOf("Dropdown", module)
 			<ibm-dropdown
 				[label]="label"
 				[helperText]="helperText"
+				[size]="size"
+				[dropUp]="dropUp"
+				[invalid]="invalid"
+				[invalidText]="invalidText"
+				[selectionFeedback]="selectionFeedback"
 				type="multi"
 				placeholder="Multi-select"
 				[disabled]="disabled"
@@ -64,17 +213,8 @@ storiesOf("Dropdown", module)
 		</div>
 	`,
 		props: {
-			disabled: boolean("disabled", false),
-			label: text("Label", "Dropdown label"),
-			helperText: text("Helper text", "Optional helper text."),
-			items: object("items", [
-				{ content: "one" },
-				{ content: "two" },
-				{ content: "three" },
-				{ content: "four" }
-			]),
-			selected: action("Selected fired for multi-select dropdown"),
-			onClose: action("Multi-select dropdown closed")
+			...getProps(),
+			selectionFeedback: select("Selection feedback", ["top", "fixed", "top-after-reopen"], "top-after-reopen")
 		}
 	}))
 	.add("Multi-select with ngModel", () => ({
@@ -84,27 +224,30 @@ storiesOf("Dropdown", module)
 				type="multi"
 				[label]="label"
 				[helperText]="helperText"
+				[size]="size"
+				[dropUp]="dropUp"
+				[invalid]="invalid"
+				[invalidText]="invalidText"
+				[selectionFeedback]="selectionFeedback"
 				placeholder="Select"
 				[disabled]="disabled"
 				[(ngModel)]="model"
-				value="content">
+				value="id">
 				<ibm-dropdown-list [items]="items"></ibm-dropdown-list>
 			</ibm-dropdown>
 			<span>{{model | json}}</span>
 		</div>
 		`,
-		props: {
-			disabled: boolean("disabled", false),
-			label: text("Label", "Dropdown label"),
-			helperText: text("Helper text", "Optional helper text."),
-			items: [
-				{ content: "one" },
-				{ content: "two" },
-				{ content: "three" },
-				{ content: "four" }
-			],
-			model: null
-		}
+		props: getProps({
+			items: object("items", [
+				{ content: "one", id: 0 },
+				{ content: "two", id: 1 },
+				{ content: "three", id: 2 },
+				{ content: "four", id: 3 }
+			]),
+			model: [2],
+			selectionFeedback: select("Selection feedback", ["top", "fixed", "top-after-reopen"], "top-after-reopen")
+		})
 	}))
 	.add("With ngModel", () => ({
 		template: `
@@ -112,6 +255,9 @@ storiesOf("Dropdown", module)
 			<ibm-dropdown
 				[label]="label"
 				[helperText]="helperText"
+				[size]="size"
+				[invalid]="invalid"
+				[invalidText]="invalidText"
 				placeholder="Select"
 				[disabled]="disabled"
 				[(ngModel)]="model"
@@ -121,18 +267,52 @@ storiesOf("Dropdown", module)
 			<span>{{model | json}}</span>
 		</div>
 		`,
-		props: {
-			disabled: boolean("disabled", false),
-			label: text("Label", "Dropdown label"),
-			helperText: text("Helper text", "Optional helper text."),
+		props: getProps({
+			model: "two"
+		})
+	}))
+	.add("In modal", () => ({
+		template: `
+			<app-dropdown-modal
+				[items]="items"
+				[modalText]="modalText">
+			</app-dropdown-modal>
+		`,
+		props: getProps({
+			modalText: text("modal text", modalText)
+		})
+	}))
+	.add("With reactive forms", () => ({
+		template: `
+			<app-reactive-forms
+				[label]="label"
+				[helperText]="helperText"
+				[invalid]="invalid"
+				[invalidText]="invalidText"
+				[disabled]="disabled"
+				[items]="items"
+				[selectionFeedback]="selectionFeedback"
+				(selected)="selected($event)"
+				(onClose)="onClose($event)">
+			</app-reactive-forms>
+		`,
+		props: getProps({
 			items: [
-				{ content: "one" },
-				{ content: "two" },
-				{ content: "three" },
-				{ content: "four" }
+				{
+					content: "numerical value item 1",
+					oid: 1,
+					selected: false
+				},
+				{
+					content: "string value item 2",
+					oid: 2,
+					selected: false
+				}
 			],
-			model: null
-		}
+			selectionFeedback: select("Selection feedback", ["top", "fixed", "top-after-reopen"], "top-after-reopen"),
+			selected: action("Selected fired for multi-select dropdown"),
+			onClose: action("Multi-select dropdown closed")
+		})
 	}))
 	.add("With Observable items", () => ({
 		template: `
@@ -140,6 +320,9 @@ storiesOf("Dropdown", module)
 			<ibm-dropdown
 				[label]="label"
 				[helperText]="helperText"
+				[invalid]="invalid"
+				[invalidText]="invalidText"
+				[size]="size"
 				[theme]="theme"
 				placeholder="Select"
 				[disabled]="disabled"
@@ -149,20 +332,14 @@ storiesOf("Dropdown", module)
 			</ibm-dropdown>
 		</div>
 	`,
-		props: {
-			disabled: boolean("disabled", false),
-			label: text("Label", "Dropdown label"),
-			helperText: text("Helper text", "Optional helper text."),
+		props: getProps({
 			items: of([
 				{ content: "one" },
-				{ content: "two" },
+				{ content: "two", selected: true },
 				{ content: "three" },
 				{ content: "four" }
-			]),
-			selected: action("Selected fired for dropdown"),
-			onClose: action("Dropdown closed"),
-			theme: select("theme", ["dark", "light"], "dark")
-		}
+			])
+		})
 	}))
 	.add("With Template", () => ({
 		template: `
@@ -171,6 +348,9 @@ storiesOf("Dropdown", module)
 				[theme]="theme"
 				placeholder="Select"
 				[displayValue]="dropdownRenderer"
+				[size]="size"
+				[invalid]="invalid"
+				[invalidText]="invalidText"
 				[disabled]="disabled"
 				(selected)="selected($event)"
 				(onClose)="onClose($event)">
@@ -187,18 +367,7 @@ storiesOf("Dropdown", module)
 			</ng-template>
 		</div>
 	`,
-		props: {
-			disabled: boolean("disabled", false),
-			items: object("items", [
-				{ content: "one", selected: true },
-				{ content: "two" },
-				{ content: "three" },
-				{ content: "four" }
-			]),
-			selected: action("Selected fired for dropdown"),
-			onClose: action("Dropdown closed"),
-			theme: select("theme", ["dark", "light"], "dark")
-		}
+		props: getProps()
 
 	}))
 	.add("Skeleton", () => ({
@@ -213,17 +382,10 @@ storiesOf("Dropdown", module)
 			</ibm-dropdown>
 		</div>
 		`,
-		props: {
-			items: [
-				{ content: "one" },
-				{ content: "two" },
-				{ content: "three" },
-				{ content: "four" }
-			]
-		}
+		props: getProps()
 	}))
 	.add("Documentation", () => ({
 		template: `
-			<ibm-documentation src="documentation/components/Dropdown.html"></ibm-documentation>
+			<ibm-documentation src="documentation/classes/src_dropdown.dropdown.html"></ibm-documentation>
 		`
 	}));

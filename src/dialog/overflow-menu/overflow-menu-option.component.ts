@@ -9,6 +9,21 @@ import {
 } from "@angular/core";
 
 /**
+ * Available HTML anchor targets
+ */
+export enum Target {
+	self = "_self",
+	blank = "_blank",
+	parent = "_parent",
+	top = "_top"
+}
+
+/**
+ * Security HTML anchor rel when target is set
+ */
+const REL = "noreferrer noopener";
+
+/**
  * `OverflowMenuOption` represents a single option in an overflow menu
  *
  * Presently it has three possible states - normal, disabled, and danger:
@@ -28,9 +43,9 @@ import {
 			class="bx--overflow-menu-options__btn"
 			role="menuitem"
 			[tabindex]="tabIndex"
-			(focus)="tabIndex = 0"
-			(blur)="tabIndex = -1"
-			(click)="onClick($event)"
+			(focus)="onFocus()"
+			(blur)="onBlur()"
+			(click)="onClick()"
 			[disabled]="disabled"
 			[attr.title]="title">
 			<ng-container *ngTemplateOutlet="tempOutlet"></ng-container>
@@ -41,11 +56,13 @@ import {
 			class="bx--overflow-menu-options__btn"
 			role="menuitem"
 			[tabindex]="tabIndex"
-			(focus)="tabIndex = 0"
-			(blur)="tabIndex = -1"
-			(click)="onClick($event)"
+			(focus)="onFocus()"
+			(blur)="onBlur()"
+			(click)="onClick()"
 			[attr.disabled]="disabled"
 			[href]="href"
+			[attr.target]="target"
+			[attr.rel]="rel"
 			[attr.title]="title">
 			<ng-container *ngTemplateOutlet="tempOutlet"></ng-container>
 		</a>
@@ -78,8 +95,33 @@ export class OverflowMenuOption implements AfterViewInit {
 	 * disable/enable interactions
 	 */
 	@Input() disabled = false;
-
+	/**
+	 * If it's an anchor, this is its location
+	 */
 	@Input() href: string;
+	/**
+	 * Allows to add a target to the anchor
+	 */
+	@Input() set target(value: Target) {
+		if (!Object.values(Target).includes(value)) {
+			console.warn(
+`\`target\` must have one of the following values: ${Object.values(Target).join(", ")}.
+Please use the \`Target\` enum exported by carbon-components-angular`);
+			return;
+		}
+
+		this._target = value;
+	}
+
+	get target() {
+		return this._target;
+	}
+	/**
+	 * rel only returns its value if target is defined
+	 */
+	get rel() {
+		return this._target ? REL : null;
+	}
 
 	@Output() selected: EventEmitter<any> = new EventEmitter();
 
@@ -88,15 +130,26 @@ export class OverflowMenuOption implements AfterViewInit {
 	// change after checked errors
 	public title = null;
 
+	protected _target: Target;
+
 	constructor(protected elementRef: ElementRef) {}
 
-	onClick(event) {
+	onClick() {
 		this.selected.emit();
+	}
+
+	onFocus() {
+		setTimeout(() => this.tabIndex = 0);
+	}
+
+	onBlur() {
+		setTimeout(() => this.tabIndex = -1);
 	}
 
 	ngAfterViewInit() {
 		const button = this.elementRef.nativeElement.querySelector("button, a");
-		if (button.scrollWidth > button.offsetWidth) {
+		const textContainer = button.querySelector(".bx--overflow-menu-options__option-content");
+		if (textContainer.scrollWidth > textContainer.offsetWidth) {
 			this.title = button.textContent;
 		}
 	}

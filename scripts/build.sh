@@ -3,10 +3,12 @@
 set -e # exit with nonzero exit code if anything fails
 
 rm -rf dist
-gulp build
-ngc -p tsconfig-aot.json
-webpack --config webpack.build.js
-rm -rf dist/src dist/waste demo/bundle/documentation
+
+# run the angular/ng-packagr build
+npm run ng:build
+
+# restore the scripts to the dist package.json
+node scripts/add-package-scripts.js
 
 # move/generate/update meta files into dist
 gulp buildMeta

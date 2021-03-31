@@ -5,9 +5,6 @@ import {
 export class TableItem {
 	/**
 	 * Data for the table item.
-	 *
-	 * @type {*}
-	 * @memberof TableItem
 	 */
 	data: any;
 
@@ -16,8 +13,8 @@ export class TableItem {
 	 *
 	 * You only need to set it for the first item in the row.
 	 *
-	 * @type {*}
-	 * @memberof TableItem
+	 * See `expandAsTable` documentation if you need to the table to expand to additional
+	 * table rows.
 	 */
 	expandedData: any;
 
@@ -52,9 +49,6 @@ export class TableItem {
 	 * 	[new TableItem({data: {name: "Custom item", link: "/table"}, template: this.customItemTemplate})]
 	 * ];
 	 * ```
-	 *
-	 * @type {TemplateRef<any>}
-	 * @memberof TableItem
 	 */
 	template: TemplateRef<any>;
 
@@ -63,15 +57,87 @@ export class TableItem {
 	 *
 	 * You only need to set it for the first item in the row.
 	 *
-	 * @type {TemplateRef<any>}
-	 * @memberof TableItem
 	 */
 	expandedTemplate: TemplateRef<any>;
 
 	/**
+	 * Setting this to `true` makes table interpret `expandedData` as additional rows to insert in place
+	 * for expanded data. `expandedTemplate` is then ignored.
+	 *
+	 * You can apply the template for individual cells as usual.
+	 *
+	 * Example model data:
+	 *
+	 * ```typescript
+	 * this.model.data = [
+	 * 	[new TableItem({ data: "Name 4" }), new TableItem({ data: "twer" })], // regular row
+	 * 	[
+	 * 		new TableItem({
+	 * 			data: "Name 3.1",
+	 * 			// `expandedData` mimics the format of the rest of the table
+	 * 			expandedData: [
+	 * 				[
+	 * 					new TableItem({ data: "More names", expandedData: "No template" }),
+	 * 					new TableItem({ data: { name: "Morey", link: "#" }, template: this.customTableItemTemplate })
+	 * 				],
+	 * 				[
+	 * 					new TableItem({ data: "Core names", expandedData: "No template" }),
+	 * 					new TableItem({ data: { name: "Corey", link: "#" }, template: this.customTableItemTemplate })
+	 * 				]
+	 * 			],
+	 * 			// `expandAsTable` tells the table to interpret `expandedData` as table data
+	 * 			expandAsTable: true
+	 * 		}),
+	 * 		new TableItem({ data: "swer" })
+	 * 	],
+	 * 	[new TableItem({ data: "Name 7" }), new TableItem({data: "twer"})] // regular row
+	 * ];
+	 * ```
+	 */
+	expandAsTable: false;
+
+	/**
+	 * The number of rows to span
+	 */
+	rowSpan = 1;
+
+	/**
+	 * The number of columns to span
+	 */
+	colSpan = 1;
+
+	get title() {
+		if (this._title) {
+			return this._title;
+		}
+
+		if (!this.data) {
+			return "";
+		}
+
+		if (typeof this.data === "string") {
+			return this.data;
+		}
+
+		if (
+			this.data.toString &&
+			this.data.constructor !== ({}).constructor
+		) {
+			return this.data.toString();
+		}
+
+		// data can’t be reasonably converted to an end user readable string
+		return "";
+	}
+
+	set title(title) {
+		this._title = title;
+	}
+
+	private _title: string;
+
+	/**
 	 * Creates an instance of TableItem.
-	 * @param {*} [rawData]
-	 * @memberof TableItem
 	 */
 	constructor(rawData?: any) {
 		// defaults so we dont leave things empty
@@ -80,9 +146,10 @@ export class TableItem {
 		};
 		// fill our object with provided props, and fallback to defaults
 		const data = Object.assign({}, defaults, rawData);
-		this.data = data.data;
-		this.expandedData = data.expandedData;
-		this.template = data.template;
-		this.expandedTemplate = data.expandedTemplate;
+		for (const property of Object.getOwnPropertyNames(data)) {
+			if (data.hasOwnProperty(property)) {
+				this[property] = data[property];
+			}
+		}
 	}
 }

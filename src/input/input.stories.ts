@@ -8,9 +8,10 @@ import {
 	number
 } from "@storybook/addon-knobs/angular";
 
-import { InputModule, DocumentationModule } from "../";
+import { InputModule } from "../";
+import { DocumentationModule } from "../documentation-component/documentation.module";
 
-storiesOf("Input", module).addDecorator(
+storiesOf("Components|Input", module).addDecorator(
 	moduleMetadata({
 		imports: [InputModule, DocumentationModule]
 	})
@@ -21,24 +22,33 @@ storiesOf("Input", module).addDecorator(
 		<ibm-label
 			[helperText]="helperText"
 			[invalid]="invalid"
-			[invalidText]="invalidText">
+			[invalidText]="invalidText"
+			[warn]="warn"
+			[warnText]="warnText">
 			{{label}}
 			<input
 				ibmText
+				[size]="size"
 				[invalid]="invalid"
+				[warn]="warn"
 				[disabled]="disabled"
 				[theme]="theme"
-				[placeholder]="placeholder">
+				[placeholder]="placeholder"
+				[autocomplete]="autocomplete">
 		</ibm-label>
 	`,
 		props: {
 			theme: select("Theme", ["dark", "light"], "dark"),
+			size: select("Size", ["sm", "md", "xl"], "md"),
 			disabled: boolean("Disabled", false),
 			invalid: boolean("Show form validation", false),
 			invalidText: text("Form validation content", "Validation message here"),
+			warn: boolean("Show the warning state", false),
+			warnText: text("Text for the warning", "This is a warning"),
 			label: text("Label", "Text Input label"),
 			helperText: text("Helper text", "Optional helper text."),
-			placeholder: text("Placeholder text", "Placeholder text")
+			placeholder: text("Placeholder text", "Placeholder text"),
+			autocomplete: text("autocomplete", "on")
 		}
 	}))
 	.add("TextArea", () => ({
@@ -86,6 +96,6 @@ storiesOf("Input", module).addDecorator(
 	}))
 	.add("Documentation", () => ({
 		template: `
-			<ibm-documentation src="documentation/components/Label.html"></ibm-documentation>
+			<ibm-documentation src="documentation/classes/src_input.label.html"></ibm-documentation>
 		`
 	}));

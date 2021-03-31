@@ -1,6 +1,7 @@
 import {
 	Component,
-	HostBinding
+	HostBinding,
+	Input
 } from "@angular/core";
 
 /**
@@ -17,10 +18,6 @@ import {
  * ```
  *
  * <example-url>../../iframe.html?id=tiles--basic</example-url>
- *
- * @export
- * @class Tile
- * @implements {OnInit}
  */
 @Component({
 	selector: "ibm-tile",
@@ -28,4 +25,10 @@ import {
 })
 export class Tile {
 	@HostBinding("class.bx--tile") tileClass = true;
+
+	@HostBinding("class.bx--tile--light") get lightThemeEnabled() {
+		return this.theme === "light";
+	}
+
+	@Input() theme: "light" | "dark" = "dark";
 }

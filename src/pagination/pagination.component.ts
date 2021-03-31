@@ -1,4 +1,4 @@
-import { PaginationModel } from "./pagination.module";
+import { PaginationModel } from "./pagination-model.class";
 import {
 	Component,
 	Input,
@@ -6,9 +6,21 @@ import {
 	EventEmitter
 } from "@angular/core";
 
-import { range } from "../common/utils";
-import { I18n } from "./../i18n/i18n.module";
-import { ExperimentalService } from "./../experimental.module";
+import { I18n, Overridable } from "carbon-components-angular/i18n";
+import { ExperimentalService } from "carbon-components-angular/experimental";
+import { merge } from "carbon-components-angular/utils";
+
+export interface PaginationTranslations {
+	ITEMS_PER_PAGE: string;
+	OPEN_LIST_OF_OPTIONS: string;
+	BACKWARD: string;
+	FORWARD: string;
+	TOTAL_ITEMS_UNKNOWN: string;
+	TOTAL_ITEMS: string;
+	TOTAL_ITEM: string;
+	OF_LAST_PAGES: string;
+	OF_LAST_PAGE: string;
+}
 
 /**
  * Use pagination when you have multiple pages of data to handle.
@@ -33,9 +45,6 @@ import { ExperimentalService } from "./../experimental.module";
  * ```
  *
  * <example-url>../../iframe.html?id=pagination--basic</example-url>
- *
- * @export
- * @class Pagination
  */
 @Component({
 	selector: "ibm-pagination",
@@ -53,17 +62,17 @@ import { ExperimentalService } from "./../experimental.module";
 		</div>
 
 		<div *ngIf="!skeleton" class="bx--pagination__left">
-			<label class="bx--pagination__text" [for]="itemsPerPageSelectId">
-				{{itemsPerPageText | async}}
-			</label>
-			<div class="bx--form-item">
-				<div class="bx--select bx--select--inline"
-					[ngClass]="{
-						'bx--select__item-count': isExperimental
-					}">
+			<ng-container *ngIf="showPageInput">
+				<label class="bx--pagination__text" [for]="itemsPerPageSelectId">
+					{{itemsPerPageText.subject | async}}
+				</label>
+				<div
+					class="bx--select bx--select--inline bx--select__item-count"
+					[class.bx--select--disabled]="pageInputDisabled">
 					<select
 						[id]="itemsPerPageSelectId"
 						[(ngModel)]="itemsPerPage"
+						[disabled]="pageInputDisabled"
 						class="bx--select-input">
 						<option
 							class="bx--select-option"
@@ -72,21 +81,24 @@ import { ExperimentalService } from "./../experimental.module";
 								{{ option }}
 						</option>
 					</select>
-					<ibm-icon-chevron-down16
-						style="display: inherit;"
-						innerClass="bx--select__arrow"
-						[ariaLabel]="optionsListText | async">
-					</ibm-icon-chevron-down16>
+					<svg
+						ibmIcon="chevron--down"
+						size="16"
+						style="display: inherit"
+						class="bx--select__arrow"
+						aria-hidden="true"
+						[attr.ariaLabel]="optionsListText.subject | async">
+					</svg>
 				</div>
-			</div>
-
-			<span *ngIf="!pagesUnknown" class="bx--pagination__text">
-				<span *ngIf="!isExperimental">|&nbsp;</span>
-				{{totalItemsText | i18nReplace:{start: startItemIndex, end: endItemIndex, total: model.totalDataLength } | async}}
+			</ng-container>
+			<span *ngIf="!pagesUnknown && totalDataLength <= 1" class="bx--pagination__text" [ngStyle]="{'margin-left': showPageInput ? null : 0}">
+				{{totalItemText.subject | i18nReplace:{start: startItemIndex, end: endItemIndex, total: totalDataLength } | async}}
 			</span>
-			<span *ngIf="pagesUnknown" class="bx--pagination__text">
-				<span *ngIf="!isExperimental">|&nbsp;</span>
-				{{totalItemsUnknownText | i18nReplace:{start: startItemIndex, end: endItemIndex } | async}}
+			<span *ngIf="!pagesUnknown && totalDataLength > 1" class="bx--pagination__text" [ngStyle]="{'margin-left': showPageInput ? null : 0}">
+				{{totalItemsText.subject | i18nReplace:{start: startItemIndex, end: endItemIndex, total: totalDataLength } | async}}
+			</span>
+			<span *ngIf="pagesUnknown" class="bx--pagination__text" [ngStyle]="{'margin-left': showPageInput ? null : 0}">
+				{{totalItemsUnknownText.subject | i18nReplace:{start: startItemIndex, end: endItemIndex } | async}}
 			</span>
 		</div>
 
@@ -95,57 +107,83 @@ import { ExperimentalService } from "./../experimental.module";
 			<p class="bx--skeleton__text" style="width: 70px"></p>
 		</div>
 
-		<div *ngIf="!skeleton" class="bx--pagination__right"
-			[ngClass]="{
-				'bx--pagination--inline': !isExperimental
-			}">
-
-			<div *ngIf="!pageInputDisabled" class="bx--form-item">
-				<div class="bx--select bx--select--inline"
-				[ngClass]="{
-					'bx--select__page-number' : isExperimental
-				}">
-					<label [for]="currentPageSelectId" class="bx--label bx--visually-hidden">{{itemsPerPageText | async}}</label>
-					<select [id]="currentPageSelectId" class="bx--select-input" [(ngModel)]="currentPage">
-						<option *ngFor="let i of range(lastPage + 1, 1)" class="bx--select-option" [value]="i">{{i}}</option>
+		<div *ngIf="!skeleton" class="bx--pagination__right">
+			<ng-container *ngIf="showPageInput">
+				<div
+					class="bx--select bx--select--inline bx--select__page-number"
+					[class.bx--select--disabled]="pageInputDisabled">
+					<label [for]="currentPageSelectId" class="bx--label bx--visually-hidden">{{itemsPerPageText.subject | async}}</label>
+					<input
+						*ngIf="pageOptions.length > pageSelectThreshold"
+						style="padding-right: 1rem; margin-right: 1rem;"
+						[id]="currentPageSelectId"
+						type="number"
+						min="1"
+						[max]="pageOptions.length"
+						class="bx--select-input"
+						[(ngModel)]="currentPage">
+					<select
+						*ngIf="pageOptions.length <= pageSelectThreshold"
+						[id]="currentPageSelectId"
+						class="bx--select-input"
+						[disabled]="pageInputDisabled"
+						[(ngModel)]="currentPage">
+						<option *ngFor="let page of pageOptions; let i = index;" class="bx--select-option" [value]="i + 1">{{i + 1}}</option>
 					</select>
-					<ibm-icon-chevron-down16
+					<svg
+						*ngIf="pageOptions.length <= 1000"
+						ibmIcon="chevron--down"
+						size="16"
 						style="display: inherit;"
-						innerClass="bx--select__arrow"
-						[ariaLabel]="optionsListText | async">
-					</ibm-icon-chevron-down16>
+						class="bx--select__arrow"
+						[attr.ariaLabel]="optionsListText.subject | async">
+					</svg>
 				</div>
+			</ng-container>
+
+			<span *ngIf="!pagesUnknown && lastPage <= 1" class="bx--pagination__text">
+				<ng-container *ngIf="!showPageInput">{{currentPage}}</ng-container>
+				{{ofLastPageText.subject | i18nReplace: {last: lastPage} | async}}
+			</span>
+			<span *ngIf="!pagesUnknown && lastPage > 1" class="bx--pagination__text">
+				<ng-container *ngIf="!showPageInput">{{currentPage}}</ng-container>
+				{{ofLastPagesText.subject | i18nReplace: {last: lastPage} | async}}
+			</span>
+			<span *ngIf="pagesUnknown" class="bx--pagination__text">
+				<ng-container *ngIf="!showPageInput">{{currentPage}}</ng-container>
+				{{pageText.subject | async}} {{currentPage}}
+			</span>
+			<div class="bx--pagination__control-buttons">
+				<button
+					ibmButton="ghost"
+					iconOnly="true"
+					class="bx--pagination__button bx--pagination__button--backward"
+					[ngClass]="{
+						'bx--pagination__button--no-index': currentPage <= 1 || disabled
+					}"
+					tabindex="0"
+					[attr.aria-label]="backwardText.subject | async"
+					(click)="selectPage.emit(previousPage)"
+					[disabled]="(currentPage <= 1 || disabled ? true : null)">
+					<svg ibmIcon="caret--left" size="16"></svg>
+				</button>
+
+				<button
+					ibmButton="ghost"
+					iconOnly="true"
+					class="
+						bx--pagination__button
+						bx--pagination__button--forward"
+					[ngClass]="{
+						'bx--pagination__button--no-index': currentPage >= lastPage || disabled
+					}"
+					tabindex="0"
+					[attr.aria-label]="forwardText.subject | async"
+					(click)="selectPage.emit(nextPage)"
+					[disabled]="(currentPage >= lastPage || disabled ? true : null)">
+					<svg ibmIcon="caret--right" size="16"></svg>
+				</button>
 			</div>
-
-			<span *ngIf="!pageInputDisabled && !pagesUnknown" class="bx--pagination__text">
-				{{ofLastPagesText | i18nReplace: {last: lastPage} | async}}
-			</span>
-			<span *ngIf="!pageInputDisabled && pagesUnknown" class="bx--pagination__text">
-				{{pageText | async}} {{currentPage}}
-			</span>
-			<button
-				class="bx--pagination__button bx--pagination__button--backward"
-				[ngClass]="{
-					'bx--pagination__button--no-index': currentPage <= 1 || disabled
-				}"
-				tabindex="0"
-				[attr.aria-label]="backwardText | async"
-				(click)="selectPage.emit(previousPage)"
-				[disabled]="(currentPage <= 1 || disabled ? true : null)">
-				<ibm-icon-caret-left16></ibm-icon-caret-left16>
-			</button>
-
-			<button
-				class="bx--pagination__button bx--pagination__button--forward"
-				[ngClass]="{
-					'bx--pagination__button--no-index': currentPage >= lastPage || disabled
-				}"
-				tabindex="0"
-				[attr.aria-label]="forwardText | async"
-				(click)="selectPage.emit(nextPage)"
-				[disabled]="(currentPage >= lastPage || disabled ? true : null)">
-				<ibm-icon-caret-right16></ibm-icon-caret-right16>
-			</button>
 		</div>
 	</div>
 	`
@@ -159,8 +197,6 @@ export class Pagination {
 	@Input() skeleton = false;
 	/**
 	 * `PaginationModel` with the information about pages you're controlling.
-	 *
-	 * @type {Model}
 	 */
 	@Input() model: PaginationModel;
 	/**
@@ -172,9 +208,14 @@ export class Pagination {
 	 */
 	@Input() pageInputDisabled = false;
 	/**
+	 * Controls wether or not to show the page selects
+	 */
+	@Input() showPageInput = true;
+	/**
 	 * Set to `true` if the total number of items is unknown.
 	 */
 	@Input() pagesUnknown = false;
+	@Input() pageSelectThreshold = 1000;
 
 	/**
 	 * Expects an object that contains some or all of:
@@ -184,41 +225,27 @@ export class Pagination {
 	 *		"OPEN_LIST_OF_OPTIONS": "Open list of options",
 	 *		"BACKWARD": "Backward",
 	 *		"FORWARD": "Forward",
+	 *		"TOTAL_ITEMS_UNKNOWN": "{{start}}-{{end}} items",
 	 *		"TOTAL_ITEMS": "{{start}}-{{end}} of {{total}} items",
-	 *		"TOTAL_PAGES": "{{current}} of {{last}} pages",
-	 *		"OF_LAST_PAGES": "of {{last}} pages"
+	 *		"TOTAL_ITEM": "{{start}}-{{end}} of {{total}} item",
+	 *		"OF_LAST_PAGES": "of {{last}} pages",
+	 *		"OF_LAST_PAGE": "of {{last}} page"
 	 * }
 	 * ```
 	 */
 	@Input()
-	set translations (value) {
-		if (value.ITEMS_PER_PAGE) {
-			this.itemsPerPageText.next(value.ITEMS_PER_PAGE);
-		}
-		if (value.OPEN_LIST_OF_OPTIONS) {
-			this.optionsListText.next(value.OPEN_LIST_OF_OPTIONS);
-		}
-		if (value.BACKWARD) {
-			this.backwardText.next(value.BACKWARD);
-		}
-		if (value.FORWARD) {
-			this.forwardText.next(value.FORWARD);
-		}
-		if (value.TOTAL_ITEMS) {
-			this.totalItemsText.next(value.TOTAL_ITEMS);
-		}
-		if (value.TOTAL_ITEMS_UNKNOWN) {
-			this.totalItemsUnknownText.next(value.TOTAL_ITEMS_UNKNOWN);
-		}
-		if (value.TOTAL_PAGES) {
-			this.totalPagesText.next(value.TOTAL_PAGES);
-		}
-		if (value.PAGE) {
-			this.pageText.next(value.PAGE);
-		}
-		if (value.OF_LAST_PAGES) {
-			this.ofLastPagesText.next(value.OF_LAST_PAGES);
-		}
+	set translations (value: PaginationTranslations) {
+		const valueWithDefaults = merge(this.i18n.getMultiple("PAGINATION"), value);
+		this.itemsPerPageText.override(valueWithDefaults.ITEMS_PER_PAGE);
+		this.optionsListText.override(valueWithDefaults.OPEN_LIST_OF_OPTIONS);
+		this.backwardText.override(valueWithDefaults.BACKWARD);
+		this.forwardText.override(valueWithDefaults.FORWARD);
+		this.totalItemsText.override(valueWithDefaults.TOTAL_ITEMS);
+		this.totalItemText.override(valueWithDefaults.TOTAL_ITEM);
+		this.totalItemsUnknownText.override(valueWithDefaults.TOTAL_ITEMS_UNKNOWN);
+		this.pageText.override(valueWithDefaults.PAGE);
+		this.ofLastPagesText.override(valueWithDefaults.OF_LAST_PAGES);
+		this.ofLastPageText.override(valueWithDefaults.OF_LAST_PAGE);
 	}
 
 	/**
@@ -253,22 +280,26 @@ export class Pagination {
 		// in the model once the page is loaded
 		this.selectPage.emit(value);
 	}
+
+	get totalDataLength() {
+		return this.model.totalDataLength;
+	}
 	/**
 	 * The last page number to display in the pagination view.
 	 */
 	get lastPage(): number {
-		const last = Math.ceil(this.model.totalDataLength / this.model.pageLength);
+		const last = Math.ceil(this.totalDataLength / this.itemsPerPage);
 		return last > 0 ? last : 1;
 	}
 
 	get startItemIndex() {
-		return this.endItemIndex > 0 ? (this.currentPage - 1) * this.model.pageLength + 1 : 0;
+		return this.endItemIndex > 0 ? (this.currentPage - 1) * this.itemsPerPage + 1 : 0;
 	}
 
 	get endItemIndex() {
-		const projectedEndItemIndex = this.currentPage * this.model.pageLength;
+		const projectedEndItemIndex = this.currentPage * this.itemsPerPage;
 
-		return projectedEndItemIndex < this.model.totalDataLength ? projectedEndItemIndex : this.model.totalDataLength;
+		return projectedEndItemIndex < this.totalDataLength ? projectedEndItemIndex : this.totalDataLength;
 	}
 
 	/**
@@ -286,33 +317,30 @@ export class Pagination {
 		return this.currentPage >= lastPage ? lastPage : this.currentPage + 1;
 	}
 
-	get isExperimental() {
-		return this.experimental.isExperimental;
+	get pageOptions() {
+		if (this.totalDataLength && this._pageOptions.length !== this.totalDataLength) {
+			this._pageOptions = Array(Math.ceil(this.totalDataLength / this.itemsPerPage));
+		}
+		return this._pageOptions;
 	}
 
 	itemsPerPageSelectId = `pagination-select-items-per-page-${Pagination.paginationCounter}`;
 	currentPageSelectId = `pagination-select-current-page-${Pagination.paginationCounter}`;
 
-	itemsPerPageText = this.i18n.get("PAGINATION.ITEMS_PER_PAGE");
-	optionsListText = this.i18n.get("PAGINATION.OPEN_LIST_OF_OPTIONS");
-	backwardText = this.i18n.get("PAGINATION.BACKWARD");
-	forwardText = this.i18n.get("PAGINATION.FORWARD");
-	totalItemsText = this.i18n.get("PAGINATION.TOTAL_ITEMS");
-	totalItemsUnknownText = this.i18n.get("PAGINATION.TOTAL_ITEMS_UNKNOWN");
-	totalPagesText = this.i18n.get("PAGINATION.TOTAL_PAGES");
-	pageText = this.i18n.get("PAGINATION.PAGE");
-	ofLastPagesText = this.i18n.get("PAGINATION.OF_LAST_PAGES");
+	itemsPerPageText = this.i18n.getOverridable("PAGINATION.ITEMS_PER_PAGE");
+	optionsListText = this.i18n.getOverridable("PAGINATION.OPEN_LIST_OF_OPTIONS");
+	backwardText = this.i18n.getOverridable("PAGINATION.BACKWARD");
+	forwardText = this.i18n.getOverridable("PAGINATION.FORWARD");
+	totalItemsText = this.i18n.getOverridable("PAGINATION.TOTAL_ITEMS");
+	totalItemText = this.i18n.getOverridable("PAGINATION.TOTAL_ITEM");
+	totalItemsUnknownText = this.i18n.getOverridable("PAGINATION.TOTAL_ITEMS_UNKNOWN");
+	pageText = this.i18n.getOverridable("PAGINATION.PAGE");
+	ofLastPagesText = this.i18n.getOverridable("PAGINATION.OF_LAST_PAGES");
+	ofLastPageText = this.i18n.getOverridable("PAGINATION.OF_LAST_PAGE");
+
+	protected _pageOptions = [];
 
 	constructor(protected i18n: I18n, protected experimental: ExperimentalService) {
 		Pagination.paginationCounter++;
-	}
-
-	/**
-	 * Generates a list of numbers. (Python function)
-	 * Used to display the correct pagination controls.
-	 * @returns {array}
-	 */
-	range(stop: number, start = 0, step = 1) {
-		return range(stop, start, step);
 	}
 }

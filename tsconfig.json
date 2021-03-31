@@ -1,27 +1,43 @@
 {
 	"compilerOptions": {
-		"baseUrl": "",
+		"baseUrl": ".",
 		"declaration": true,
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
-		"lib": ["es2016", "dom"],
+		"downlevelIteration": true,
+		"esModuleInterop": true,
+		"importHelpers": true,
+		"lib": [
+			"es2016",
+			"dom"
+		],
 		"sourceMap": true,
-		"mapRoot": "./",
-		"module": "es2015",
-		"moduleResolution": "node",
-		"outDir": "./dist",
-		"rootDir": "src",
-		"target": "es5",
 		"inlineSources": true,
+		"module": "esnext",
+		"moduleResolution": "node",
+		"outDir": "./dist-pkg",
+		"rootDir": ".",
+		"target": "es2015",
+		"skipLibCheck": true,
 		"typeRoots": [
-			"./node_modules/@types",
-			"./demo/typings.d.ts"
-		]
+			"./node_modules/@types"
+		],
+		"paths": {
+			"carbon-components-angular/*": [
+				"./src/*/index"
+			]
+		}
 	},
-	"include": [
-		"src/**/*"
-	],
 	"exclude": [
-		"src/**/*.stories.ts"
-	]
+		"**/*.stories.ts",
+		"**/stories/**",
+		"**/*.spec.ts",
+		"**/node_modules/**",
+		"**/dist/**"
+	],
+	"angularCompilerOptions": {
+		"skipTemplateCodegen": true,
+		"strictMetadataEmit": false,
+		"fullTemplateTypeCheck": false
+	}
 }

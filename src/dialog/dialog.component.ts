@@ -8,30 +8,22 @@ import {
 	OnInit,
 	AfterViewInit,
 	OnDestroy,
-	HostListener
+	HostListener,
+	Optional
 } from "@angular/core";
 import {
 	Observable,
-	Subscription,
-	fromEvent,
-	merge
+	Subscription
 } from "rxjs";
-import { throttleTime } from "rxjs/operators";
 // the AbsolutePosition is required to import the declaration correctly
 import Position, { position, AbsolutePosition, Positions } from "@carbon/utils-position";
-import { cycleTabs, getFocusElementList } from "./../common/tab.service";
-import { DialogConfig } from "./dialog-config.interface";
-
+import { cycleTabs, getFocusElementList } from "carbon-components-angular/common";
+import { CloseMeta, CloseReasons, DialogConfig } from "./dialog-config.interface";
+import { AnimationFrameService, ElementService } from "carbon-components-angular/utils";
 
 /**
  * Implements a `Dialog` that can be positioned anywhere on the page.
  * Used to implement a popover or tooltip.
- *
- * @export
- * @class Dialog
- * @implements {OnInit}
- * @implements {AfterViewInit}
- * @implements {OnDestroy}
  */
 @Component({
 	selector: "ibm-dialog",
@@ -39,13 +31,9 @@ import { DialogConfig } from "./dialog-config.interface";
 })
 export class Dialog implements OnInit, AfterViewInit, OnDestroy {
 	/**
-	 * One static event observable to handle window resizing.
-	 */
-	protected static resizeObservable: Observable<any> = fromEvent(window, "resize").pipe(throttleTime(100));
-	/**
 	 * Emits event that handles the closing of a `Dialog` object.
 	 */
-	@Output() close: EventEmitter<any> = new EventEmitter();
+	@Output() close: EventEmitter<CloseMeta> = new EventEmitter();
 	/**
 	 * Receives `DialogConfig` interface object with properties of `Dialog`
 	 * explicitly defined.
@@ -54,7 +42,8 @@ export class Dialog implements OnInit, AfterViewInit, OnDestroy {
 	/**
 	 * Maintains a reference to the view DOM element of the `Dialog`.
 	 */
-	@ViewChild("dialog") dialog: ElementRef;
+	// @ts-ignore
+	@ViewChild("dialog", { static: false }) dialog: ElementRef;
 
 	/**
 	 * Stores the data received from `dialogConfig`.
@@ -66,16 +55,10 @@ export class Dialog implements OnInit, AfterViewInit, OnDestroy {
 	 */
 	public placement: string;
 
-	/**
-	 * `Subscription` used to update placement in the event of a window resize.
-	 */
-	protected resizeSubscription: Subscription;
-	/**
-	 * Subscription to all the scrollable parents `scroll` event
-	 */
-	// add a new subscription temporarily so that contexts (such as tests)
-	// that don't run ngAfterViewInit have something to unsubscribe in ngOnDestroy
-	protected scrollSubscription: Subscription = new Subscription();
+	protected visibilitySubscription = new Subscription();
+
+	protected animationFrameSubscription = new Subscription();
+
 	/**
 	 * Handles offsetting the `Dialog` item based on the defined position
 	 * to not obscure the content beneath.
@@ -96,9 +79,14 @@ export class Dialog implements OnInit, AfterViewInit, OnDestroy {
 
 	/**
 	 * Creates an instance of `Dialog`.
-	 * @param {ElementRef} elementRef
+	 * @param elementRef
+	 * @param elementService
 	 */
-	constructor(protected elementRef: ElementRef) {	}
+	constructor(
+		protected elementRef: ElementRef,
+		protected elementService: ElementService,
+		@Optional() protected animationFrameService: AnimationFrameService = null
+	) {}
 
 	/**
 	 * Initialize the `Dialog`, set the placement and gap, and add a `Subscription` to resize events.
@@ -106,10 +94,6 @@ export class Dialog implements OnInit, AfterViewInit, OnDestroy {
 	ngOnInit() {
 		this.placement = this.dialogConfig.placement.split(",")[0];
 		this.data = this.dialogConfig.data;
-
-		this.resizeSubscription = Dialog.resizeObservable.subscribe(() => {
-			this.placeDialog();
-		});
 
 		// run any additional initialization code that consuming classes may have
 		this.onDialogInit();
@@ -121,7 +105,7 @@ export class Dialog implements OnInit, AfterViewInit, OnDestroy {
 	 */
 	ngAfterViewInit() {
 		const dialogElement = this.dialog.nativeElement;
-		// split the wrapper class list and apply separately to avoid IE from
+		// split the wrapper class list and apply separately to avoid IE
 		// 1. throwing an error due to assigning a readonly property (classList)
 		// 2. throwing a SyntaxError due to passing an empty string to `add`
 		if (this.dialogConfig.wrapperClass) {
@@ -129,62 +113,37 @@ export class Dialog implements OnInit, AfterViewInit, OnDestroy {
 				dialogElement.classList.add(extraClass);
 			}
 		}
-		this.placeDialog();
+
+		// only focus the dialog if there are focusable elements within the dialog
 		if (getFocusElementList(this.dialog.nativeElement).length > 0) {
 			dialogElement.focus();
 		}
-		const parentEl: HTMLElement = this.dialogConfig.parentRef.nativeElement;
-		let node = parentEl;
-		let observables = [];
 
-		// if the element has an overflow set as part of
-		// its computed style it can scroll
-		const isScrollableElement = (element: HTMLElement) => {
-			const computedStyle = getComputedStyle(element);
-			return (
-				computedStyle.overflow === "auto" ||
-				computedStyle.overflow === "scroll" ||
-				computedStyle["overflow-y"] === "auto" ||
-				computedStyle["overflow-y"] === "scroll" ||
-				computedStyle["overflow-x"] === "auto" ||
-				computedStyle["overflow-x"] === "scroll"
-			);
-		};
+		const parentElement = this.dialogConfig.parentRef.nativeElement;
 
-		const isVisibleInContainer = (element, container) => {
-			const elementRect = element.getBoundingClientRect();
-			const containerRect = container.getBoundingClientRect();
-			return elementRect.bottom <= containerRect.bottom && elementRect.top >= containerRect.top;
-		};
+		if (this.animationFrameService) {
+			this.animationFrameSubscription = this.animationFrameService.tick.subscribe(() => {
+				this.placeDialog();
+			});
+		}
 
-		const placeDialogInContainer = () => {
-			// only do the work to find the scroll containers if we're appended to body
-			// or skip this work if we're inline
-			if (!this.dialogConfig.appendInline) {
-				// walk the parents and subscribe to all the scroll events we can
-				while (node.parentElement && node !== document.body) {
-					if (isScrollableElement(node)) {
-						observables.push(fromEvent(node, "scroll"));
-					}
-					node = node.parentElement;
-				}
-				// subscribe to the observable, and update the position and visibility
-				const scrollObservable = merge(...observables);
-				this.scrollSubscription = scrollObservable.subscribe((event: any) => {
+		if (this.dialogConfig.closeWhenHidden) {
+			this.visibilitySubscription = this.elementService
+				.visibility(parentElement, parentElement)
+				.subscribe(value => {
 					this.placeDialog();
-					if (!isVisibleInContainer(this.dialogConfig.parentRef.nativeElement, event.target)) {
-						this.doClose();
+					if (!value.visible) {
+						this.doClose({
+							reason: CloseReasons.hidden
+						});
 					}
-				});
-			}
-		};
+				}
+			);
+		}
 
-		// settimeout to let the DOM settle before attempting to place the dialog
-		// and before notifying components that the DOM is ready
-		setTimeout(() => {
-			placeDialogInContainer();
-			this.afterDialogViewInit();
-		});
+		this.placeDialog();
+		// run afterDialogViewInit on the next tick
+		setTimeout(() => this.afterDialogViewInit());
 	}
 
 	/**
@@ -211,6 +170,13 @@ export class Dialog implements OnInit, AfterViewInit, OnDestroy {
 			} else {
 				pos = this.addGap[placement](positionService.findAbsolute(reference, target, placement));
 			}
+
+			if (this.dialogConfig.offset) {
+				// Apply vertical and horizontal offsets given through the dialogConfig
+				pos.top = pos.top + this.dialogConfig.offset.y;
+				pos.left = pos.left + this.dialogConfig.offset.x;
+			}
+
 			return pos;
 		};
 
@@ -235,7 +201,7 @@ export class Dialog implements OnInit, AfterViewInit, OnDestroy {
 
 	/**
 	 * Sets up a KeyboardEvent to close `Dialog` with Escape key.
-	 * @param {KeyboardEvent} event
+	 * @param event
 	 */
 	@HostListener("keydown", ["$event"])
 	escapeClose(event: KeyboardEvent) {
@@ -243,7 +209,10 @@ export class Dialog implements OnInit, AfterViewInit, OnDestroy {
 			case "Esc": // IE specific value
 			case "Escape": {
 				event.stopImmediatePropagation();
-				this.doClose();
+				this.doClose({
+					reason: CloseReasons.interaction,
+					target: event.target
+				});
 				break;
 			}
 			case "Tab": {
@@ -256,28 +225,33 @@ export class Dialog implements OnInit, AfterViewInit, OnDestroy {
 	/**
 	 * Sets up a event Listener to close `Dialog` if click event occurs outside
 	 * `Dialog` object.
-	 * @param {any} event
+	 * @param event
 	 */
 	@HostListener("document:click", ["$event"])
 	clickClose(event) {
 		if (!this.elementRef.nativeElement.contains(event.target)
 			&& !this.dialogConfig.parentRef.nativeElement.contains(event.target) ) {
-			this.doClose();
+			this.doClose({
+				reason: CloseReasons.interaction,
+				target: event.target
+			});
 		}
 	}
 
 	/**
 	 * Closes `Dialog` object by emitting the close event upwards to parents.
 	 */
-	public doClose() {
-		this.close.emit();
+	public doClose(meta: CloseMeta = { reason: CloseReasons.interaction }) {
+		this.close.emit(meta);
 	}
 
 	/**
-	 * At destruction of component, `Dialog` unsubscribes from handling window resizing changes.
+	 * At destruction of component, `Dialog` unsubscribes from all the subscriptions.
 	 */
 	ngOnDestroy() {
-		this.resizeSubscription.unsubscribe();
-		this.scrollSubscription.unsubscribe();
+		this.visibilitySubscription.unsubscribe();
+		if (this.animationFrameSubscription) {
+			this.animationFrameSubscription.unsubscribe();
+		}
 	}
 }

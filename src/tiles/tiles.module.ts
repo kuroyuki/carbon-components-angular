@@ -6,13 +6,8 @@ import { ClickableTile } from "./clickable-tile.component";
 import { ExpandableTile } from "./expandable-tile.component";
 import { SelectionTile } from "./selection-tile.component";
 import { TileGroup } from "./tile-group.component";
-import { I18nModule } from "./../i18n/i18n.module";
-
-export { Tile } from "./tile.component";
-export { ClickableTile } from "./clickable-tile.component";
-export { ExpandableTile } from "./expandable-tile.component";
-export { SelectionTile } from "./selection-tile.component";
-export { TileGroup } from "./tile-group.component";
+import { I18nModule } from "carbon-components-angular/i18n";
+import { LinkModule } from "carbon-components-angular/link";
 
 @NgModule({
 	declarations: [
@@ -31,7 +26,8 @@ export { TileGroup } from "./tile-group.component";
 	],
 	imports: [
 		CommonModule,
-		I18nModule
+		I18nModule,
+		LinkModule
 	]
 })
 export class TilesModule {}

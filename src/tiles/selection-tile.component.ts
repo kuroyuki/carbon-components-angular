@@ -3,10 +3,12 @@ import {
 	Input,
 	Output,
 	EventEmitter,
-	ViewChild
+	ViewChild,
+	HostListener,
+	AfterViewInit
 } from "@angular/core";
 import { NG_VALUE_ACCESSOR } from "@angular/forms";
-import { I18n } from "./../i18n/i18n.module";
+import { I18n } from "carbon-components-angular/i18n";
 
 @Component({
 	selector: "ibm-selection-tile",
@@ -38,7 +40,7 @@ import { I18n } from "./../i18n/i18n.module";
 		</label>
 	`
 })
-export class SelectionTile {
+export class SelectionTile implements AfterViewInit {
 	static tileCount = 0;
 	/**
 	 * The unique id for the input.
@@ -49,13 +51,16 @@ export class SelectionTile {
 	 * Set to `true` if this tile should be selected.
 	 */
 	@Input() set selected(value: boolean) {
-		if (!this.input) { return; }
-		this.input.nativeElement.checked = value ? true : null;
+		// If an initial selected value is set before input exists, we save
+		// the value and check again when input exists in `AfterViewInit`.
+		this._selected = value ? true : null;
+		if (this.input) {
+			this.input.nativeElement.checked = this._selected;
+		}
 	}
 
 	get selected() {
-		if (!this.input) { return; }
-		return this.input.nativeElement.checked;
+		return this.input ? this.input.nativeElement.checked : false;
 	}
 	/**
 	 * The value for the tile. Returned via `ngModel` or `selected` event on the containing `TileGroup`.
@@ -69,17 +74,39 @@ export class SelectionTile {
 	/**
 	 * Set by the containing `TileGroup`. Used for the `name` property on the input.
 	 */
-	name: string;
+	name = "tile-group-unbound";
 	/**
 	 * Defines whether or not the `SelectionTile` supports selecting multiple tiles as opposed to single
 	 * tile selection.
 	 */
-	multiple: boolean;
+	multiple = true;	// Set to true because of the way tile group sets it up.
+						// If it is first undefined then set to true, the type will change from radio to checkbox and deselects the inputs.
 
-	@ViewChild("input") input;
+	// @ts-ignore
+	@ViewChild("input", { static: true }) input;
+
+	// If an initial selected value is set before input exists, we save
+	// the value and check again when input exists in `AfterViewInit`.
+	protected _selected = null;
 
 	constructor(public i18n: I18n) {
 		SelectionTile.tileCount++;
+	}
+
+	ngAfterViewInit() {
+		if (this.input) {
+			setTimeout(() => {
+				this.input.nativeElement.checked = this._selected;
+			});
+		}
+	}
+
+	@HostListener("keydown", ["$event"])
+	keyboardInput(event) {
+		if (event.key === "Enter" || event.key === "Spacebar" || event.key === " ") {
+			this.selected = !this.selected;
+			this.change.emit(event);
+		}
 	}
 
 	onChange(event) {

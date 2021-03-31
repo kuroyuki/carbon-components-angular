@@ -37,16 +37,15 @@ let nextId = 0;
 *
 * ```html
 * <ng-template #tabHeading>
-* 	<ibm-icon
-* 		icon="facebook"
+* 	<svg ibmIcon="facebook"
 * 		size="sm"
 * 		style="margin-right: 7px;">
-* 	</ibm-icon>
+* 	</svg>
 * 	Hello Tab 1
 * </ng-template>
 * <ibm-tabs>
 * 	<ibm-tab [heading]="tabHeading">
-* 		Tab 1 content <ibm-icon icon="alert" size="lg"></ibm-icon>
+* 		Tab 1 content <svg ibmIcon="alert" size="lg"></svg>
 * 	</ibm-tab>
 * 	<ibm-tab heading='Tab2'>
 * 		Tab 2 content
@@ -56,24 +55,21 @@ let nextId = 0;
 * 	</ibm-tab>
 * </ibm-tabs>
 * ```
-*
-*
-* @export
-* @class Tab
-* @implements {OnInit}
 */
 @Component({
 	selector: "ibm-tab",
 	template: `
 		<div
-			[tabindex]="tabIndex"
+			[attr.tabindex]="tabIndex"
 			role="tabpanel"
 			*ngIf="shouldRender()"
+			class="bx--tab-content"
 			[ngStyle]="{'display': active ? null : 'none'}"
-			[attr.aria-labelledby]="id + '-header'">
+			[attr.aria-labelledby]="id + '-header'"
+			aria-live="polite">
 			<ng-content></ng-content>
 		</div>
-	 `
+	`
 })
 export class Tab implements OnInit {
 	/**
@@ -84,9 +80,15 @@ export class Tab implements OnInit {
 
 	/**
 	 * The `Tab`'s title to be displayed or custom temaplate for the `Tab` heading.
-	 * @type {(string | TemplateRef<any>)}
 	 */
 	@Input() heading: string | TemplateRef<any>;
+	/**
+	 * Optional override for the `tabItem's`'s title attribute which is set in `TabHeaders`.
+	 * `tabItem`'s title attribute is automatically set to `heading`.
+	 *
+	 * You might want to use this if you set `heading` to a `TemplateRef`.
+	 */
+	@Input() title: string;
 	/**
 	 * Allows the user to pass data to the custom template for the `Tab` heading.
 	 */
@@ -110,10 +112,11 @@ export class Tab implements OnInit {
 	/**
 	 * Set to true to have Tab items cached and not reloaded on tab switching.
 	 */
-	@Input() cacheActive = false;
+	@Input() set cacheActive(shouldCache: boolean) {
+		this._cacheActive = shouldCache;
+	}
 	/**
 	 * Value 'selected' to be emitted after a new `Tab` is selected.
-	 * @type {EventEmitter<void>}
 	 */
 	@Output() selected: EventEmitter<void> = new EventEmitter<void>();
 
@@ -121,6 +124,12 @@ export class Tab implements OnInit {
 	 * Used to set the id property on the element.
 	 */
 	@HostBinding("attr.id") attrClass = this.id;
+
+	get cacheActive() {
+		return this._cacheActive;
+	}
+
+	protected _cacheActive = false;
 
 	/**
 	 * Checks for custom heading template on initialization and updates the value
@@ -140,9 +149,8 @@ export class Tab implements OnInit {
 	}
 
 	/**
- 	* Returns value indicating whether this `Tab` should be rendered in a `TabPanel`.
- 	* @returns boolean
- 	*/
+	* Returns value indicating whether this `Tab` should be rendered in a `TabPanel`.
+	*/
 	shouldRender() {
 		return this.active || this.cacheActive;
 	}

@@ -10,9 +10,6 @@ import { Directive, ElementRef, HostBinding } from "@angular/core";
  * If a `ul` or `ol` is nested within a `li` the directive will apply nested list styling.
  *
  * <example-url>../../iframe.html?id=list--basic</example-url>
- *
- * @export
- * @class List
  */
 @Directive({
 	selector: "[ibmList]"
@@ -29,7 +26,7 @@ export class List {
 	}
 
 	@HostBinding("class.bx--list--nested") get nested() {
-		return this.elementRef.nativeElement.parentElement.tagName === "LI";
+		return !!(this.elementRef.nativeElement.parentElement && this.elementRef.nativeElement.parentElement.tagName === "LI");
 	}
 
 	constructor(protected elementRef: ElementRef) {}

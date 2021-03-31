@@ -7,71 +7,86 @@ import {
 	ContentChildren,
 	AfterContentInit,
 	ViewChildren,
-	ElementRef
+	ElementRef,
+	TemplateRef,
+	OnChanges,
+	SimpleChanges,
+	OnInit,
+	ChangeDetectorRef
 } from "@angular/core";
+import { EventService } from "carbon-components-angular/utils";
 
 import { Tab } from "./tab.component";
-
 
 /**
  * The `TabHeaders` component contains the `Tab` items and controls scroll functionality
  * if content has overflow.
- * @export
- * @class TabHeaders
- * @implements {AfterViewInit}
  */
 @Component({
 	selector: "ibm-tab-headers",
 	template: `
 		<nav
-			class="bx--tabs"
+			class="bx--tabs--scrollable"
 			[ngClass]="{
-				'bx--skeleton': skeleton
+				'bx--skeleton': skeleton,
+				'bx--tabs--container bx--tabs--scrollable--container': type === 'container'
 			}"
-			role="navigation">
-			<div class="bx--tabs-trigger" tabindex="0" (click)="showTabList()">
-				<a href="javascript:void(0)" class="bx--tabs-trigger-text" tabindex="-1">
-					<ng-container *ngIf="!getSelectedTab().headingIsTemplate">
-						{{ getSelectedTab().heading }}
-					</ng-container>
-					<ng-template
-						*ngIf="getSelectedTab().headingIsTemplate"
-						[ngTemplateOutlet]="getSelectedTab().heading">
-					</ng-template>
-				</a>
-				<svg width="10" height="5" viewBox="0 0 10 5">
-					<path d="M0 0l5 4.998L10 0z" fill-rule="evenodd"></path>
+			role="navigation"
+			[attr.aria-label]="ariaLabel"
+			[attr.aria-labelledby]="ariaLabelledby">
+			<button
+				#leftOverflowNavButton
+				type="button"
+				[ngClass]="{
+					'bx--tab--overflow-nav-button': hasHorizontalOverflow,
+					'bx--tab--overflow-nav-button--hidden': leftOverflowNavButtonHidden
+				}"
+				(click)="handleOverflowNavClick(-1)"
+				(mousedown)="handleOverflowNavMouseDown(-1)"
+				(mouseup)="handleOverflowNavMouseUp()">
+				<svg
+					focusable="false"
+					preserveAspectRatio="xMidYMid meet"
+					xmlns="http://www.w3.org/2000/svg"
+					fill="currentColor"
+					width="16"
+					height="16"
+					viewBox="0 0 16 16"
+					aria-hidden="true">
+					<path d="M5 8L10 3 10.7 3.7 6.4 8 10.7 12.3 10 13z"></path>
 				</svg>
-			</div>
+			</button>
+			<div *ngIf="!leftOverflowNavButtonHidden" class="bx--tabs__overflow-indicator--left"></div>
 			<ul
 				#tabList
-				[ngClass]="{
-					'bx--tabs__nav--hidden': !tabListVisible
-				}"
-				class="bx--tabs__nav"
-				role="tablist">
+				class="bx--tabs--scrollable__nav"
+				role="tablist"
+				(scroll)="handleScroll()">
 				<li role="presentation">
 					<ng-container *ngIf="contentBefore" [ngTemplateOutlet]="contentBefore"></ng-container>
 				</li>
 				<li
 					*ngFor="let tab of tabs; let i = index;"
 					[ngClass]="{
-						'bx--tabs__nav-item--selected': tab.active,
-						'bx--tabs__nav-item--disabled': tab.disabled
+						'bx--tabs__nav-item--selected bx--tabs--scrollable__nav-item--selected': tab.active,
+						'bx--tabs__nav-item--disabled bx--tabs--scrollable__nav-item--disabled': tab.disabled
 					}"
-					class="bx--tabs__nav-item"
+					class="bx--tabs--scrollable__nav-item"
 					role="presentation"
-					(click)="selectTab(tabref, tab, i)">
-					<a
+					(click)="selectTab(tabItem, tab, i)">
+					<button
 						#tabItem
 						[attr.aria-selected]="tab.active"
 						[attr.tabindex]="(tab.active?0:-1)"
 						[attr.aria-controls]="tab.id"
-						(focus)="onTabFocus(tabref, i)"
+						[attr.aria-disabled]="tab.disabled"
+						(focus)="onTabFocus(tabItem, i)"
+						(click)="$event.preventDefault()"
 						draggable="false"
 						id="{{tab.id}}-header"
-						class="bx--tabs__nav-link"
-						href="javascript:void(0)"
+						class="bx--tabs--scrollable__nav-link"
+						[title]="tab.title ? tab.title : tab.heading"
+						href="#"
 						role="tab">
 						<ng-container *ngIf="!tab.headingIsTemplate">
 							{{ tab.heading }}
@@ -81,17 +96,40 @@ import { Tab } from "./tab.component";
 							[ngTemplateOutlet]="tab.heading"
 							[ngTemplateOutletContext]="{$implicit: tab.context}">
 						</ng-template>
-					</a>
+					</button>
 				</li>
 				<li role="presentation">
 					<ng-container *ngIf="contentAfter" [ngTemplateOutlet]="contentAfter"></ng-container>
 				</li>
 			</ul>
+			<div *ngIf="!rightOverflowNavButtonHidden" class="bx--tabs__overflow-indicator--right"></div>
+			<button
+				#rightOverflowNavButton
+				type="button"
+				[ngClass]="{
+					'bx--tab--overflow-nav-button': hasHorizontalOverflow,
+					'bx--tab--overflow-nav-button--hidden': rightOverflowNavButtonHidden
+				}"
+				(click)="handleOverflowNavClick(1)"
+				(mousedown)="handleOverflowNavMouseDown(1)"
+				(mouseup)="handleOverflowNavMouseUp()">
+				<svg
+					focusable="false"
+					preserveAspectRatio="xMidYMid meet"
+					xmlns="http://www.w3.org/2000/svg"
+					fill="currentColor"
+					width="16"
+					height="16"
+					viewBox="0 0 16 16"
+					aria-hidden="true">
+					<path d="M11 8L6 13 5.3 12.3 9.6 8 5.3 3.7 6 3z"></path>
+				</svg>
+			</button>
 		</nav>
-	 `
+	`
 })
 
-export class TabHeaders implements AfterContentInit {
+export class TabHeaders implements AfterContentInit, OnChanges, OnInit {
 	/**
 	 * List of `Tab` components.
 	 */
@@ -111,14 +149,29 @@ export class TabHeaders implements AfterContentInit {
 	 * Set to `true` to put tabs in a loading state.
 	 */
 	@Input() skeleton = false;
+	/**
+	 * Sets the aria label on the nav element.
+	 */
+	@Input() ariaLabel: string;
+	/**
+	 * Sets the aria labelledby on the nav element.
+	 */
+	@Input() ariaLabelledby: string;
 
-	@Input() contentBefore;
-	@Input() contentAfter;
+	@Input() contentBefore: TemplateRef<any>;
+	@Input() contentAfter: TemplateRef<any>;
+
+	@Input() type: "default" | "container" = "default";
 
 	/**
 	 * Gets the Unordered List element that holds the `Tab` headings from the view DOM.
 	 */
-	@ViewChild("tabList") headerContainer;
+	// @ts-ignore
+	@ViewChild("tabList", { static: true }) headerContainer;
+	// @ts-ignore
+	@ViewChild("rightOverflowNavButton", { static: true }) rightOverflowNavButton;
+	// @ts-ignore
+	@ViewChild("leftOverflowNavButton", { static: true }) leftOverflowNavButton;
 	/**
 	 * ContentChild of all the n-tabs
 	 */
@@ -139,7 +192,33 @@ export class TabHeaders implements AfterContentInit {
 	 * Controls the manual focusing done by tabbing through headings.
 	 */
 	public currentSelectedTab: number;
-	public tabListVisible = false;
+
+	public get hasHorizontalOverflow() {
+		const tabList = this.headerContainer.nativeElement;
+		return tabList.scrollWidth > tabList.clientWidth;
+	}
+
+	public get leftOverflowNavButtonHidden() {
+		const tabList = this.headerContainer.nativeElement;
+		return !this.hasHorizontalOverflow || !tabList.scrollLeft;
+	}
+
+	public get rightOverflowNavButtonHidden() {
+		const tabList = this.headerContainer.nativeElement;
+		return !this.hasHorizontalOverflow ||
+			(tabList.scrollLeft + tabList.clientWidth) === tabList.scrollWidth;
+	}
+
+	// width of the overflow buttons
+	OVERFLOW_BUTTON_OFFSET = 40;
+
+	private overflowNavInterval;
+
+	constructor(
+		protected elementRef: ElementRef,
+		protected changeDetectorRef: ChangeDetectorRef,
+		protected eventService: EventService
+	) { }
 
 	// keyboard accessibility
 	/**
@@ -205,6 +284,10 @@ export class TabHeaders implements AfterContentInit {
 		}
 	}
 
+	ngOnInit() {
+		this.eventService.on(window as any, "resize", () => this.handleScroll());
+	}
+
 	ngAfterContentInit() {
 		if (!this.tabInput) {
 			this.tabs = this.tabQuery;
@@ -217,6 +300,12 @@ export class TabHeaders implements AfterContentInit {
 			this.setFirstTab();
 		});
 		this.setFirstTab();
+	}
+
+	ngOnChanges(changes: SimpleChanges) {
+		if (this.tabs && changes.cacheActive) {
+			this.tabs.forEach(tab => tab.cacheActive = this.cacheActive);
+		}
 	}
 
 	/**
@@ -233,11 +322,7 @@ export class TabHeaders implements AfterContentInit {
 		if (selected) {
 			return selected;
 		}
-		return {headingIsTemplate: false, heading: ""};
-	}
-
-	public showTabList() {
-		this.tabListVisible = true;
+		return { headingIsTemplate: false, heading: "" };
 	}
 
 	/**
@@ -248,12 +333,63 @@ export class TabHeaders implements AfterContentInit {
 			return;
 		}
 
-		// hide the tablist on mobile
-		this.tabListVisible = false;
 		this.currentSelectedTab = tabIndex;
 		this.tabs.forEach(_tab => _tab.active = false);
 		tab.active = true;
 		tab.doSelect();
+	}
+
+	public handleScroll() {
+		this.changeDetectorRef.markForCheck();
+	}
+
+	public handleOverflowNavClick(direction: number, multiplier = 15) {
+		const tabList = this.headerContainer.nativeElement;
+
+		const { clientWidth, scrollLeft, scrollWidth } = tabList;
+		if (direction === 1 && !scrollLeft) {
+			tabList.scrollLeft += this.OVERFLOW_BUTTON_OFFSET;
+		}
+
+		tabList.scrollLeft += direction * multiplier;
+
+		const leftEdgeReached =
+			direction === -1 && scrollLeft < this.OVERFLOW_BUTTON_OFFSET;
+		const rightEdgeReached =
+			direction === 1 &&
+			scrollLeft + clientWidth >= scrollWidth - this.OVERFLOW_BUTTON_OFFSET;
+
+		if (leftEdgeReached) {
+			this.rightOverflowNavButton.nativeElement.focus();
+		}
+		if (rightEdgeReached) {
+			this.leftOverflowNavButton.nativeElement.focus();
+		}
+	}
+
+	public handleOverflowNavMouseDown(direction: number) {
+		const tabList = this.headerContainer.nativeElement;
+
+		this.overflowNavInterval = setInterval(() => {
+			const { clientWidth, scrollLeft, scrollWidth } = tabList;
+
+			// clear interval if scroll reaches left or right edge
+			const leftEdgeReached = direction === -1 && scrollLeft < this.OVERFLOW_BUTTON_OFFSET;
+			const rightEdgeReached =
+				direction === 1 &&
+				scrollLeft + clientWidth >= scrollWidth - this.OVERFLOW_BUTTON_OFFSET;
+
+			if (leftEdgeReached || rightEdgeReached) {
+				clearInterval(this.overflowNavInterval);
+			}
+
+			// account for overflow button appearing and causing tablist width change
+			this.handleOverflowNavClick(direction);
+		});
+	}
+
+	public handleOverflowNavMouseUp() {
+		clearInterval(this.overflowNavInterval);
 	}
 
 	/**

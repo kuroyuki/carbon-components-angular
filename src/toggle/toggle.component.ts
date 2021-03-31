@@ -1,4 +1,4 @@
-import { Checkbox } from "../checkbox/checkbox.component";
+import { Checkbox } from "carbon-components-angular/checkbox";
 import {
 	ChangeDetectorRef,
 	Component,
@@ -9,7 +9,8 @@ import {
 } from "@angular/core";
 import { NG_VALUE_ACCESSOR } from "@angular/forms";
 
-import { I18n } from "../i18n/i18n.module";
+import { I18n, Overridable } from "carbon-components-angular/i18n";
+import { Observable } from "rxjs";
 
 /**
  * Defines the set of states for a toggle component.
@@ -23,6 +24,8 @@ export enum ToggleState {
 
 /**
  * Used to emit changes performed on toggle components.
+ *
+ * @deprecated since v4
  */
 export class ToggleChange {
 	/**
@@ -43,10 +46,6 @@ export class ToggleChange {
  * ```
  *
  * <example-url>../../iframe.html?id=toggle--basic</example-url>
- *
- * @export
- * @class Toggle
- * @extends {Checkbox}
  */
 @Component({
 	selector: "ibm-toggle",
@@ -56,10 +55,10 @@ export class ToggleChange {
 			<ng-template *ngIf="isTemplate(label)" [ngTemplateOutlet]="label"></ng-template>
 		</label>
 		<input
-			class="bx--toggle"
+			class="bx--toggle-input"
 			type="checkbox"
 			[ngClass]="{
-				'bx--toggle--small': size === 'sm',
+				'bx--toggle-input--small': size === 'sm',
 				'bx--skeleton': skeleton
 			}"
 			[id]="id"
@@ -73,18 +72,15 @@ export class ToggleChange {
 			(change)="onChange($event)"
 			(click)="onClick($event)">
 		<label
-			class="bx--toggle__label"
+			class="bx--toggle-input__label"
 			[for]="id"
 			[ngClass]="{
 				'bx--skeleton': skeleton
 			}">
-			<span class="bx--toggle__text--left">{{(!skeleton ? offText : null) | async }}</span>
-			<span class="bx--toggle__appearance">
-				<svg *ngIf="size === 'sm'" class="bx--toggle__check" width="6px" height="5px" viewBox="0 0 6 5">
-					<path d="M2.2 2.7L5 0 6 1 2.2 5 0 2.7 1 1.5z"/>
-				</svg>
+			<span class="bx--toggle__switch">
+				<span class="bx--toggle__text--off">{{(!skeleton ? getOffText() : null) | async }}</span>
+				<span class="bx--toggle__text--on">{{(!skeleton ? getOnText() : null) | async}}</span>
 			</span>
-			<span class="bx--toggle__text--right">{{(!skeleton ? onText : null) | async}}</span>
 		</label>
 	`,
 	providers: [
@@ -105,28 +101,27 @@ export class Toggle extends Checkbox {
 	 * Text that is set on the left side of the toggle.
 	 */
 	@Input()
-	set offText(value: string) {
-		this._offText.next(value);
+	set offText(value: string | Observable<string>) {
+		this._offValues.override(value);
 	}
 
 	get offText() {
-		return this._offText;
+		return this._offValues.value;
 	}
 
 	/**
 	 * Text that is set on the right side of the toggle.
 	 */
 	@Input()
-	set onText(value: string) {
-		this._onText.next(value);
+	set onText(value: string | Observable<string>) {
+		this._onValues.override(value);
 	}
 
 	get onText() {
-		return this._onText;
+		return this._onValues.value;
 	}
 	/**
 	 * Text that is set as the label of the toggle.
-	 * @type {(string)}
 	 */
 	@Input() label: string | TemplateRef<any>;
 	/**
@@ -146,11 +141,13 @@ export class Toggle extends Checkbox {
 	/**
 	 * Emits event notifying other classes when a change in state occurs on a toggle after a
 	 * click.
+	 *
+	 * @deprecated since v4
 	 */
 	@Output() change = new EventEmitter<ToggleChange>();
 
-	protected _offText = this.i18n.get("TOGGLE.OFF");
-	protected _onText = this.i18n.get("TOGGLE.ON");
+	protected _offValues = this.i18n.getOverridable("TOGGLE.OFF");
+	protected _onValues = this.i18n.getOverridable("TOGGLE.ON");
 	/**
 	 * Creates an instance of Toggle.
 	 */
@@ -160,15 +157,37 @@ export class Toggle extends Checkbox {
 	}
 
 	/**
+	 * `ControlValueAccessor` method to programmatically disable the toggle input.
+	 *
+	 * ex: `this.formGroup.get("myToggle").disable();`
+	 *
+	 * @param isDisabled `true` to disable the input
+	 */
+	setDisabledState(isDisabled: boolean) {
+		this.disabled = isDisabled;
+	}
+
+	getOffText(): Observable<string> {
+		return this._offValues.subject;
+	}
+
+	getOnText(): Observable<string> {
+		return this._onValues.subject;
+	}
+
+	/**
 	 * Creates instance of `ToggleChange` used to propagate the change event.
 	 */
 	emitChangeEvent() {
+		/* begin deprecation */
 		let event = new ToggleChange();
 		event.source = this;
 		event.checked = this.checked;
-
-		this.propagateChange(this.checked);
 		this.change.emit(event);
+		/* end deprecation */
+
+		this.checkedChange.emit(this.checked);
+		this.propagateChange(this.checked);
 	}
 
 	public isTemplate(value) {

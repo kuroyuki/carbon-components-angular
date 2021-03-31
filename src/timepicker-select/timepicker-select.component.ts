@@ -6,21 +6,19 @@ import {
 	HostBinding,
 	TemplateRef
 } from "@angular/core";
-import { Select } from "../select/select.component";
+import { Select } from "carbon-components-angular/select";
+import { NG_VALUE_ACCESSOR } from "@angular/forms";
 
 /**
  * [See demo](../../?path=/story/time-picker-select--simple)
  *
  * <example-url>../../iframe.html?id=time-picker-select--simple</example-url>
- *
- * @export
- * @class TimePickerSelect
- * @extends {Select}
  */
 @Component({
 	selector: "ibm-timepicker-select",
 	template: `
-			<label *ngIf="!skeleton" [attr.for]="id" class="bx--label bx--visually-hidden">{{label}}</label>
+		<label *ngIf="!skeleton && label" [attr.for]="id" class="bx--label bx--visually-hidden">{{label}}</label>
+		<div class="bx--select-input__wrapper">
 			<select
 				#select
 				[attr.id]="id"
@@ -29,8 +27,16 @@ import { Select } from "../select/select.component";
 				class="bx--select-input">
 				<ng-content></ng-content>
 			</select>
-			<ibm-icon-chevron-down16 *ngIf="!skeleton" class="bx--select__arrow"></ibm-icon-chevron-down16>
-	`
+			<svg ibmIcon="chevron--down" size="16" *ngIf="!skeleton" class="bx--select__arrow"></svg>
+		</div>
+	`,
+	providers: [
+		{
+			provide: NG_VALUE_ACCESSOR,
+			useExisting: TimePickerSelect,
+			multi: true
+		}
+	]
 })
 export class TimePickerSelect extends Select {
 	@HostBinding("class.bx--select") timeSelect = true;
@@ -54,11 +60,5 @@ export class TimePickerSelect extends Select {
 
 	@HostBinding("class.bx--select--light") get timePickerSelectLight() {
 		return this.theme === "light";
-	}
-
-	@Output() valueChange: EventEmitter<string> = new EventEmitter();
-
-	onChange(event) {
-		this.valueChange.emit(event.target.value);
 	}
 }

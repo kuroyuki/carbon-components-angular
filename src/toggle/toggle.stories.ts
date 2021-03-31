@@ -6,11 +6,61 @@ import {
 	text
 } from "@storybook/addon-knobs/angular";
 
-import { ToggleModule, DocumentationModule } from "../";
+import {
+	FormBuilder,
+	FormControl,
+	FormGroup,
+	ReactiveFormsModule
+} from "@angular/forms";
+import { Component, OnInit } from "@angular/core";
 
-storiesOf("Toggle", module).addDecorator(
+import { ToggleModule } from "../";
+import { DocumentationModule } from "../documentation-component/documentation.module";
+
+@Component({
+	selector: "app-reactive-forms",
+	template: `
+		<form [formGroup]="formGroup">
+			<div style="width: 300px">
+				<ibm-toggle
+					label="Toggle in reactive form"
+					onText="On"
+					offText="Off"
+					formControlName="toggle">
+				</ibm-toggle>
+			</div>
+		</form>
+
+		<br>
+
+		<button (click)="toggleDisable()">Toggle disabled state</button>
+	`
+})
+class ReactiveFormsStory implements OnInit {
+	public formGroup: FormGroup;
+
+	constructor(protected formBuilder: FormBuilder) { }
+
+	ngOnInit() {
+		this.formGroup = this.formBuilder.group({
+			toggle: new FormControl()
+		});
+	}
+
+	toggleDisable() {
+		const toggle = this.formGroup.get("toggle");
+		toggle.disabled ? toggle.enable() : toggle.disable();
+	}
+}
+
+storiesOf("Components|Toggle", module).addDecorator(
 	moduleMetadata({
-		imports: [ToggleModule, DocumentationModule]
+		declarations: [ReactiveFormsStory],
+		imports: [
+			ToggleModule,
+			DocumentationModule,
+			ReactiveFormsModule
+		]
 	})
 )
 	.addDecorator(withKnobs)
@@ -24,6 +74,14 @@ storiesOf("Toggle", module).addDecorator(
 				[checked]="checked"
 				[size]="size">
 			</ibm-toggle>
+			<ibm-toggle
+				[label]="label"
+				[onText]="altOnText"
+				[offText]="altOffText"
+				[disabled]="disabled"
+				[checked]="checked"
+				[size]="size">
+			</ibm-toggle>
 		`,
 		props: {
 			disabled: boolean("Disabled", false),
@@ -31,8 +89,15 @@ storiesOf("Toggle", module).addDecorator(
 			size: select("Size", ["md", "sm"], "md"),
 			label: text("Label text", ""),
 			onText: text("On text", "On"),
-			offText: text("Off text", "Off")
+			offText: text("Off text", "Off"),
+			altOffText: text("Alternative off text", "Dark"),
+			altOnText: text("Alternative on text", "Light")
 		}
+	}))
+	.add("With reactive forms", () => ({
+		template: `
+			<app-reactive-forms></app-reactive-forms>
+		`
 	}))
 	.add("Skeleton", () => ({
 		template: `
@@ -43,6 +108,6 @@ storiesOf("Toggle", module).addDecorator(
 	}))
 	.add("Documentation", () => ({
 		template: `
-			<ibm-documentation src="documentation/components/Toggle.html"></ibm-documentation>
+			<ibm-documentation src="documentation/classes/src_toggle.toggle.html"></ibm-documentation>
 		`
 	}));

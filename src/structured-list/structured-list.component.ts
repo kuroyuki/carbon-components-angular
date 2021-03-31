@@ -52,11 +52,6 @@ import { NG_VALUE_ACCESSOR, ControlValueAccessor } from "@angular/forms";
  * ```
  *
  * <example-url>../../iframe.html?id=structured-list--basic</example-url>
- *
- * @export
- * @class StructuredList
- * @implements {AfterContentInit}
- * @implements {ControlValueAccessor}
  */
 @Component({
 	selector: "ibm-structured-list",
@@ -158,6 +153,7 @@ export class StructuredList implements AfterContentInit, ControlValueAccessor {
 		this.rows.forEach(row => {
 			setSelection(row);
 			row.name = this.name;
+			row.tabindex = this.selection ? "0" : "null";
 			row.change.subscribe(() => {
 				this.selected.emit({
 					value: row.value,

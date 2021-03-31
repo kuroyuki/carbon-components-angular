@@ -9,30 +9,12 @@ import {
 	ViewChild
 } from "@angular/core";
 import { NG_VALUE_ACCESSOR, ControlValueAccessor } from "@angular/forms";
-import { I18n } from "../i18n/i18n.module";
-
-/**
- * Used to emit changes performed on search components.
- */
-export class SearchChange {
-	/**
-	 * Contains the `Search` that has been changed.
-	 */
-	source: Search;
-	/**
-	 * The value of the `Search` field encompassed in the `SearchChange` class.
-	 */
-	value: string;
-}
+import { I18n } from "carbon-components-angular/i18n";
 
 /**
  * [See demo](../../?path=/story/search--basic)
  *
  * <example-url>../../iframe.html?id=search--basic</example-url>
- *
- * @export
- * @class Search
- * @implements {ControlValueAccessor}
  */
 @Component({
 	selector: "ibm-search",
@@ -60,15 +42,12 @@ export class Search implements ControlValueAccessor {
 	/**
 	 * Size of the search field.
 	 */
-	@Input() set size(value: "sm" | "lg" | "xl") {
-		if (value === "lg") {
-			console.warn("size `lg` has been deprecated and replaced by `xl`");
-			value = "xl";
-		}
+
+	@Input() set size(value: "sm" | "md" | "xl") {
 		this._size = value;
 	}
 
-	get size(): "sm" | "lg" | "xl" {
+	get size(): "sm" | "md" | "xl" {
 		return this._size;
 	}
 	/**
@@ -108,6 +87,11 @@ export class Search implements ControlValueAccessor {
 	 */
 	@Input() value = "";
 	/**
+	 * Sets the autocomplete attribute on the `input` element.
+	 * For reference: https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/autocomplete#Values
+	 */
+	@Input() autocomplete = "on";
+	/**
 	 * Sets the text inside the `label` tag.
 	 */
 	@Input() label = this.i18n.get().SEARCH.LABEL;
@@ -120,13 +104,31 @@ export class Search implements ControlValueAccessor {
 	 */
 	@Input() clearButtonTitle = this.i18n.get().SEARCH.CLEAR_BUTTON;
 	/**
-	 * Emits event notifying other classes when a change in state occurs in the input.
+	 * Title for the search trigger
 	 */
-	@Output() change = new EventEmitter<SearchChange>();
+	@Input() searchTitle = "";
+	/**
+	 * Sets the aria label on the `div` element with the `search` role.
+	 */
+	@Input() ariaLabel: string;
+	/**
+	 * Emits an event when value is changed.
+	 */
+	@Output() valueChange = new EventEmitter<string>();
+	@Output() open = new EventEmitter<boolean>();
+	/**
+	 * Emits an event when the clear button is clicked.
+	 */
+	@Output() clear = new EventEmitter();
+	/**
+	 * Emits an event on enter.
+	 */
+	@Output() search = new EventEmitter<string>();
 
-	@ViewChild("input") inputRef: ElementRef;
+	// @ts-ignore
+	@ViewChild("input", { static: false }) inputRef: ElementRef;
 
-	protected _size: "sm" | "xl" = "xl";
+	protected _size: "sm" | "md" | "xl" = "md";
 
 	/**
 	 * Creates an instance of `Search`.
@@ -171,11 +173,18 @@ export class Search implements ControlValueAccessor {
 
 	/**
 	 * Called when text is written in the input.
-	 * @param {string} search The input text.
+	 * @param search The input text.
 	 */
 	onSearch(search: string) {
 		this.value = search;
-		this.emitChangeEvent();
+		this.doValueChange();
+	}
+
+	/**
+	 * Called on enter.
+	 */
+	onEnter() {
+		this.search.emit(this.value);
 	}
 
 	/**
@@ -183,22 +192,18 @@ export class Search implements ControlValueAccessor {
 	 */
 	clearSearch(): void {
 		this.value = "";
-		this.emitChangeEvent();
+		this.clear.emit();
+		this.propagateChange(this.value);
 	}
 
-	/**
-	 * Creates a class of `RadioChange` to emit the change in the `RadioGroup`.
-	 */
-	emitChangeEvent() {
-		let event = new SearchChange();
-		event.source = this;
-		event.value = this.value;
-		this.change.emit(event);
+	doValueChange() {
+		this.valueChange.emit(this.value);
 		this.propagateChange(this.value);
 	}
 
 	openSearch() {
 		this.active = true;
+		this.open.emit(this.active);
 		setTimeout(() => this.inputRef.nativeElement.focus());
 	}
 
@@ -215,10 +220,13 @@ export class Search implements ControlValueAccessor {
 
 	@HostListener("focusout", ["$event"])
 	focusOut(event) {
+		this.onTouched();
 		if (this.toolbar &&
+			this.inputRef &&
 			this.inputRef.nativeElement.value === "" &&
 			event.relatedTarget === null) {
 			this.active = false;
+			this.open.emit(this.active);
 		}
 	}
 }

@@ -1,38 +1,41 @@
 import {
 	Component,
-	HostBinding,
 	Input,
-	ViewChild,
 	ElementRef,
 	AfterContentInit
 } from "@angular/core";
-import { I18n } from "./../i18n/i18n.module";
+import { I18n, Overridable } from "carbon-components-angular/i18n";
+import { merge } from "carbon-components-angular/utils";
+
+export interface ExpandableTileTranslations {
+	EXPAND: string;
+	COLLAPSE: string;
+}
 
 @Component({
 	selector: "ibm-expandable-tile",
 	template: `
-		<div
+		<button
 			class="bx--tile bx--tile--expandable"
 			[ngClass]="{'bx--tile--is-expanded' : expanded}"
 			[ngStyle]="{'max-height': expandedHeight + 'px'}"
-			role="button"
-			tabindex="0"
+			type="button"
 			(click)="onClick()">
-			<button [attr.aria-label]="(expanded ? collapse : expand) | async" class="bx--tile__chevron">
-				<svg *ngIf="!expanded" width="12" height="7" viewBox="0 0 12 7" role="img">
-					<title>{{expand | async}}</title>
+			<div class="bx--tile__chevron">
+				<svg *ngIf="!expanded" width="12" height="7" viewBox="0 0 12 7" [attr.title]="expand.subject | async" role="img">
+					<title>{{expand.subject | async}}</title>
 					<path fill-rule="nonzero" d="M6.002 5.55L11.27 0l.726.685L6.003 7 0 .685.726 0z"/>
 				</svg>
-				<svg *ngIf="expanded" width="12" height="7" viewBox="0 0 12 7" role="img">
-					<title>{{collapse | async}}</title>
+				<svg *ngIf="expanded" width="12" height="7" viewBox="0 0 12 7" [attr.title]="collapse.subject | async" role="img">
+					<title>{{collapse.subject | async}}</title>
 					<path fill-rule="nonzero" d="M6.002 5.55L11.27 0l.726.685L6.003 7 0 .685.726 0z"/>
 				</svg>
-			</button>
+			</div>
 			<div class="bx--tile-content">
 				<ng-content select=".bx--tile-content__above-the-fold"></ng-content>
 				<ng-content select=".bx--tile-content__below-the-fold"></ng-content>
 			</div>
-		</div>
+		</button>
 	`
 })
 export class ExpandableTile implements AfterContentInit {
@@ -47,20 +50,18 @@ export class ExpandableTile implements AfterContentInit {
 	 * ```
 	 */
 	@Input()
-	set translations (value) {
-		if (value.EXPAND) {
-			this.expand.next(value.EXPAND);
-		}
-		if (value.COLLAPSE) {
-			this.collapse.next(value.COLLAPSE);
-		}
+	set translations(value: ExpandableTileTranslations) {
+		const valueWithDefaults = merge(this.i18n.getMultiple("TILES"), value);
+		this.expand.override(valueWithDefaults.EXPAND);
+		this.collapse.override(valueWithDefaults.COLLAPSE);
 	}
 
 	tileMaxHeight = 0;
+	currentExpandedHeight = 0;
 	element = this.elementRef.nativeElement;
 
-	expand = this.i18n.get("TILES.EXPAND");
-	collapse = this.i18n.get("TILES.COLLAPSE");
+	expand = this.i18n.getOverridable("TILES.EXPAND");
+	collapse = this.i18n.getOverridable("TILES.COLLAPSE");
 
 	constructor(protected i18n: I18n, protected elementRef: ElementRef) {}
 
@@ -69,7 +70,14 @@ export class ExpandableTile implements AfterContentInit {
 	}
 
 	get expandedHeight() {
-		return this.tileMaxHeight + parseInt(getComputedStyle(this.element.querySelector(".bx--tile")).paddingBottom, 10);
+		const tile = this.element.querySelector(".bx--tile");
+		const tilePadding
+			= parseInt(getComputedStyle(tile).paddingBottom, 10) + parseInt(getComputedStyle(tile).paddingTop, 10);
+		const expandedHeight = this.tileMaxHeight + tilePadding;
+		if (!isNaN(expandedHeight)) {
+			this.currentExpandedHeight = expandedHeight;
+		}
+		return this.currentExpandedHeight;
 	}
 
 	updateMaxHeight() {

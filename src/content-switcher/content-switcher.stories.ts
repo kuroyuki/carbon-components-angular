@@ -1,10 +1,11 @@
 import { storiesOf, moduleMetadata } from "@storybook/angular";
 import { action } from "@storybook/addon-actions";
-import { withKnobs } from "@storybook/addon-knobs/angular";
+import { select, withKnobs } from "@storybook/addon-knobs/angular";
 
-import { ContentSwitcherModule, DocumentationModule } from "../";
+import { ContentSwitcherModule } from "./content-switcher.module";
+import { DocumentationModule } from "../documentation-component/documentation.module";
 
-storiesOf("Content Switcher", module)
+storiesOf("Components|Content Switcher", module)
 	.addDecorator(
 		moduleMetadata({
 			imports: [
@@ -16,18 +17,19 @@ storiesOf("Content Switcher", module)
 	.addDecorator(withKnobs)
 	.add("Basic", () => ({
 		template: `
-			<ibm-content-switcher (selected)="selected($event)">
-				<button ibmContentOption>First section</button>
-				<button ibmContentOption>Second section</button>
-				<button ibmContentOption>Third section</button>
+			<ibm-content-switcher (selected)="selected($event)" [theme]="theme">
+				<button ibmContentOption name="First">First section</button>
+				<button ibmContentOption name="Second">Second section</button>
+				<button ibmContentOption name="Third">Third section</button>
 			</ibm-content-switcher>
 		`,
 		props: {
-			selected: action("selection changed")
+			selected: action("selection changed"),
+			theme: select("theme", ["dark", "light"], "dark")
 		}
 	}))
 	.add("Documentation", () => ({
 		template: `
-			<ibm-documentation src="documentation/components/ContentSwitcher.html"></ibm-documentation>
+			<ibm-documentation src="documentation/classes/src_content_switcher.contentswitcher.html"></ibm-documentation>
 		`
 	}));

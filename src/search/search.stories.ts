@@ -1,9 +1,16 @@
 import { storiesOf, moduleMetadata } from "@storybook/angular";
-import { withKnobs, boolean, select, text } from "@storybook/addon-knobs/angular";
+import { action } from "@storybook/addon-actions";
+import {
+	withKnobs,
+	boolean,
+	select,
+	text
+} from "@storybook/addon-knobs/angular";
 
-import { SearchModule, DocumentationModule } from "../";
+import { SearchModule } from "../";
+import { DocumentationModule } from "../documentation-component/documentation.module";
 
-storiesOf("Search", module).addDecorator(
+storiesOf("Components|Search", module).addDecorator(
 	moduleMetadata({
 		imports: [SearchModule, DocumentationModule]
 	})
@@ -11,13 +18,24 @@ storiesOf("Search", module).addDecorator(
 	.addDecorator(withKnobs)
 	.add("Basic", () => ({
 		template: `
-			<ibm-search [theme]="theme" [placeholder]="placeholder" [disabled]="disabled" [size]="size"></ibm-search>
+			<ibm-search
+				[theme]="theme"
+				[placeholder]="placeholder"
+				[autocomplete]="autocomplete"
+				[disabled]="disabled"
+				[size]="size"
+				(valueChange)="valueChange($event)"
+				(clear)="clear()">
+			</ibm-search>
 		`,
 		props: {
-			size: select("size", ["lg", "sm"], "lg"),
+			size: select("size", ["sm", "md", "xl"], "md"),
 			theme: select("theme", ["dark", "light"], "dark"),
 			disabled: boolean("disabled", false),
-			placeholder: text("placeholder", "Search")
+			autocomplete: text("autocomplete", "on"),
+			placeholder: text("placeholder", "Search"),
+			valueChange: action("value change fired!"),
+			clear: action("clear fired!")
 		}
 	}))
 	.add("Toolbar search", () => ({
@@ -38,6 +56,6 @@ storiesOf("Search", module).addDecorator(
 	}))
 	.add("Documentation", () => ({
 		template: `
-			<ibm-documentation src="documentation/components/Search.html"></ibm-documentation>
+			<ibm-documentation src="documentation/classes/src_search.search.html"></ibm-documentation>
 		`
 	}));

@@ -5,7 +5,7 @@ import { By	} from "@angular/platform-browser";
 import { DropdownList } from "./dropdown-list.component";
 import { ListItem } from "./../list-item.interface";
 import { ScrollableList } from "./../scrollable-list.directive";
-import { I18nModule } from "../../i18n/i18n.module";
+import { I18nModule } from "../../i18n/index";
 
 @Component({
 	template: `<ibm-dropdown-list [items]="items" (select)="onSelect($event)"></ibm-dropdown-list>`
@@ -57,7 +57,9 @@ describe("Dropdown list", () => {
 
 	it("should select an item", () => {
 		let itemEl = fixture.debugElement.query(By.css("[role='option']"));
-		itemEl.triggerEventHandler("click", null);
+		itemEl.triggerEventHandler("click", {
+			preventDefault: () => {}
+		});
 		expect(wrapper.selected.content).toBe("one");
 	});
 });
@@ -91,9 +93,13 @@ describe("Dropdown multi list", () => {
 
 	it("should multi select", () => {
 		let itemEl = fixture.debugElement.query(By.css("[role='option']:nth-child(1)"));
-		itemEl.triggerEventHandler("click", null);
+		itemEl.triggerEventHandler("click", {
+			preventDefault: () => {}
+		});
 		itemEl = fixture.debugElement.query(By.css("[role='option']:nth-child(2)"));
-		itemEl.triggerEventHandler("click", null);
+		itemEl.triggerEventHandler("click", {
+			preventDefault: () => {}
+		});
 		expect(wrapper.selected.length).toBe(2);
 		expect(wrapper.selected[0].content).toBe("one");
 		expect(wrapper.selected[1].content).toBe("two");

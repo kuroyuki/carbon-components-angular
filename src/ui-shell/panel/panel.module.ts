@@ -1,37 +1,29 @@
 import { NgModule } from "@angular/core";
 import { CommonModule } from "@angular/common";
 
-import { I18nModule } from "./../../i18n/i18n.module";
+import { I18nModule } from "carbon-components-angular/i18n";
 
 import { Panel } from "./panel.component";
-import { ProductSwitcher } from "./product-switcher.component";
-import { ProductSwitcherList } from "./product-switcher-list.component";
-import { ProductSwitcherListItem } from "./product-switcher-list-item.component";
-import { ProductSwitcherItem } from "./product-switcher-item.component";
+import { SwitcherList } from "./switcher-list.component";
+import { SwitcherListItem } from "./switcher-list-item.component";
 
 export {
 	Panel,
-	ProductSwitcher,
-	ProductSwitcherList,
-	ProductSwitcherListItem,
-	ProductSwitcherItem
+	SwitcherList,
+	SwitcherListItem
 };
 
 @NgModule({
 	declarations: [
 		Panel,
-		ProductSwitcher,
-		ProductSwitcherList,
-		ProductSwitcherListItem,
-		ProductSwitcherItem
+		SwitcherList,
+		SwitcherListItem
 	],
 	imports: [CommonModule, I18nModule],
 	exports: [
 		Panel,
-		ProductSwitcher,
-		ProductSwitcherList,
-		ProductSwitcherListItem,
-		ProductSwitcherItem
+		SwitcherList,
+		SwitcherListItem
 	]
 })
 export class PanelModule { }

@@ -4,27 +4,24 @@ import {
 	HostBinding,
 	EventEmitter,
 	Output,
-	TemplateRef
+	TemplateRef,
+	HostListener
 } from "@angular/core";
 import { NG_VALUE_ACCESSOR, ControlValueAccessor } from "@angular/forms";
-import { isNullOrUndefined } from "util";
+
+import { I18n, Overridable } from "carbon-components-angular/i18n";
+import { Observable } from "rxjs";
 
 /**
  * Used to emit changes performed on number input components.
- * @export
- * @class NumberChange
  */
 export class NumberChange {
 	/**
 	 * Contains the `Number` that has been changed.
-	 * @type {Number}
-	 * @memberof NumberChange
 	 */
-	source: Number;
+	source: NumberComponent;
 	/**
 	 * The value of the `Number` field encompassed in the `NumberChange` class.
-	 * @type {number}
-	 * @memberof NumberChange
 	 */
 	value: number;
 }
@@ -33,10 +30,6 @@ export class NumberChange {
  * [See demo](../../?path=/story/number--basic)
  *
  * <example-url>../../iframe.html?id=number--basic</example-url>
- *
- * @export
- * @class Number
- * @implements {ControlValueAccessor}
  */
 @Component({
 	selector: "ibm-number",
@@ -46,10 +39,6 @@ export class NumberChange {
 			<ng-container *ngIf="!isTemplate(label)">{{label}}</ng-container>
 			<ng-template *ngIf="isTemplate(label)" [ngTemplateOutlet]="label"></ng-template>
 		</label>
-		<div *ngIf="helperText" class="bx--form__helper-text">
-			<ng-container *ngIf="!isTemplate(helperText)">{{helperText}}</ng-container>
-			<ng-template *ngIf="isTemplate(helperText)" [ngTemplateOutlet]="helperText"></ng-template>
-		</div>
 		<div
 			data-numberinput
 			[attr.data-invalid]="(invalid ? true : null)"
@@ -58,57 +47,81 @@ export class NumberChange {
 				'bx--number--light': theme === 'light',
 				'bx--number--nolabel': !label,
 				'bx--number--helpertext': helperText,
-				'bx--skeleton' : skeleton
+				'bx--skeleton' : skeleton,
+				'bx--number--sm': size === 'sm',
+				'bx--number--xl': size === 'xl'
 			}">
-			<div class="bx--number__input-wrapper">
+			<div
+				class="bx--number__input-wrapper"
+				[ngClass]="{
+					'bx--number__input-wrapper--warning': warn
+				}">
 				<input
 					type="number"
 					[id]="id"
 					[value]="value"
-					[min]="min"
-					[max]="max"
+					[attr.min]="min"
+					[attr.max]="max"
+					[attr.step]="step"
 					[disabled]="disabled"
 					[required]="required"
 					(input)="onNumberInputChange($event)"/>
-				<ibm-icon-warning-filled16
-					*ngIf="!skeleton && invalid"
-					class="bx--number__invalid"
-					style="display: inherit;">
-				</ibm-icon-warning-filled16>
+				<svg
+					*ngIf="!skeleton && !warn && invalid"
+					ibmIcon="warning--filled"
+					size="16"
+					class="bx--number__invalid">
+				</svg>
+				<svg
+					*ngIf="!skeleton && !invalid && warn"
+					ibmIcon="warning--alt--filled"
+					size="16"
+					class="bx--number__invalid bx--number__invalid--warning">
+				</svg>
 				<div *ngIf="!skeleton" class="bx--number__controls">
 					<button
 						class="bx--number__control-btn up-icon"
 						type="button"
 						aria-live="polite"
 						aria-atomic="true"
+						[attr.aria-label]="getIncrementLabel() | async"
 						(click)="onIncrement()">
-						<ibm-icon-caret-up16></ibm-icon-caret-up16>
+						<svg ibmIcon="caret--up" size="16"></svg>
 					</button>
 					<button
 						class="bx--number__control-btn down-icon"
 						type="button"
 						aria-live="polite"
 						aria-atomic="true"
+						[attr.aria-label]="getDecrementLabel() | async"
 						(click)="onDecrement()">
-						<ibm-icon-caret-down16></ibm-icon-caret-down16>
+						<svg ibmIcon="caret--down" size="16"></svg>
 					</button>
 				</div>
 			</div>
-			<div *ngIf="invalid" class="bx--form-requirement">
+			<div *ngIf="helperText && !invalid && !warn" class="bx--form__helper-text">
+				<ng-container *ngIf="!isTemplate(helperText)">{{helperText}}</ng-container>
+				<ng-template *ngIf="isTemplate(helperText)" [ngTemplateOutlet]="helperText"></ng-template>
+			</div>
+			<div *ngIf="!warn && invalid" class="bx--form-requirement">
 				<ng-container *ngIf="!isTemplate(invalidText)">{{invalidText}}</ng-container>
 				<ng-template *ngIf="isTemplate(invalidText)" [ngTemplateOutlet]="invalidText"></ng-template>
+			</div>
+			<div *ngIf="!invalid && warn" class="bx--form-requirement">
+				<ng-container *ngIf="!isTemplate(warnText)">{{warnText}}</ng-container>
+				<ng-template *ngIf="isTemplate(warnText)" [ngTemplateOutlet]="warnText"></ng-template>
 			</div>
 		</div>
 	`,
 	providers: [
 		{
 			provide: NG_VALUE_ACCESSOR,
-			useExisting: Number,
+			useExisting: NumberComponent,
 			multi: true
 		}
 	]
 })
-export class Number implements ControlValueAccessor {
+export class NumberComponent implements ControlValueAccessor {
 	/**
 	 * Variable used for creating unique ids for number input components.
 	 */
@@ -135,7 +148,11 @@ export class Number implements ControlValueAccessor {
 	/**
 	 * The unique id for the number component.
 	 */
-	@Input() id = `number-${Number.numberCount}`;
+	@Input() id = `number-${NumberComponent.numberCount}`;
+	/**
+	 * Number input field render size
+	 */
+	@Input() size: "sm" | "md" | "xl" = "md";
 	/**
 	 * Reflects the required attribute of the `input` element.
 	 */
@@ -143,15 +160,25 @@ export class Number implements ControlValueAccessor {
 	/**
 	 * Sets the value attribute on the `input` element.
 	 */
-	@Input() value = 0;
+	@Input() set value(v: any) {
+		if (v === "" || v === null) {
+			this._value = null;
+			return;
+		}
+		this._value = Number(v);
+	}
+
+	get value() {
+		return this._value;
+	}
 	/**
 	 * Sets the min attribute on the `input` element.
 	 */
-	@Input() min;
+	@Input() min = null;
 	/**
 	 * Sets the max attribute on the `input` element.
 	 */
-	@Input() max;
+	@Input() max = null;
 	/**
 	 * Sets the text inside the `label` tag.
 	 */
@@ -165,16 +192,54 @@ export class Number implements ControlValueAccessor {
 	 */
 	@Input() invalidText: string | TemplateRef<any>;
 	/**
+	 * Sets the amount the number controls increment and decrement by.
+	 */
+	@Input() step = 1;
+	/**
+	 * If `step` is a decimal, we may want precision to be set to go around floating point precision.
+	 */
+	@Input() precision: number;
+	/**
+	 * Set to `true` to show a warning (contents set by warningText)
+	 */
+	@Input() warn = false;
+	/**
+	 * Sets the warning text
+	 */
+	@Input() warnText: string | TemplateRef<any>;
+	/**
 	 * Emits event notifying other classes when a change in state occurs in the input.
 	 */
 	@Output() change = new EventEmitter<NumberChange>();
 
+	@Input()
+	set decrementLabel(value: string | Observable<string>) {
+		this._decrementLabel.override(value);
+	}
+
+	get decrementLabel() {
+		return this._decrementLabel.value;
+	}
+
+	@Input()
+	set incrementLabel(value: string | Observable<string>) {
+		this._incrementLabel.override(value);
+	}
+
+	get incrementLabel() {
+		return this._incrementLabel.value;
+	}
+
+	protected _value = 0;
+
+	protected _decrementLabel: Overridable = this.i18n.getOverridable("NUMBER.DECREMENT");
+	protected _incrementLabel: Overridable = this.i18n.getOverridable("NUMBER.INCREMENT");
+
 	/**
 	 * Creates an instance of `Number`.
-	 * @memberof Number
 	 */
-	constructor() {
-		Number.numberCount++;
+	constructor(protected i18n: I18n) {
+		NumberComponent.numberCount++;
 	}
 
 	/**
@@ -187,8 +252,6 @@ export class Number implements ControlValueAccessor {
 
 	/**
 	 * Sets a method in order to propagate changes back to the form.
-	 * @param {any} fn
-	 * @memberof Number
 	 */
 	public registerOnChange(fn: any) {
 		this.propagateChange = fn;
@@ -202,6 +265,11 @@ export class Number implements ControlValueAccessor {
 		this.onTouched = fn;
 	}
 
+	@HostListener("focusout")
+	focusOut() {
+		this.onTouched();
+	}
+
 	/**
 	 * Sets the disabled state through the model
 	 */
@@ -211,34 +279,42 @@ export class Number implements ControlValueAccessor {
 
 	/**
 	 * Called when number input is blurred. Needed to properly implement `ControlValueAccessor`.
-	 * @memberof Number
 	 */
 	onTouched: () => any = () => { };
 
 	/**
 	 * Method set in `registerOnChange` to propagate changes back to the form.
-	 * @memberof Number
 	 */
 	propagateChange = (_: any) => { };
 
 	/**
-	 * Adds 1 to the current `value`.
+	 * Adds `step` to the current `value`.
 	 */
 	onIncrement(): void {
-		if (isNullOrUndefined(this.max) || this.value < this.max) {
-			this.value++;
+		if (this.max === null || this.value + this.step <= this.max) {
+			this.value += this.step;
+			this.value = parseFloat(this.value.toPrecision(this.precision));
 			this.emitChangeEvent();
 		}
 	}
 
 	/**
-	 * Subtracts 1 to the current `value`.
+	 * Subtracts `step` to the current `value`.
 	 */
 	onDecrement(): void {
-		if (isNullOrUndefined(this.min) || this.value > this.min) {
-			this.value--;
+		if (this.min === null || this.value - this.step >= this.min) {
+			this.value -= this.step;
+			this.value = parseFloat(this.value.toPrecision(this.precision));
 			this.emitChangeEvent();
 		}
+	}
+
+	getDecrementLabel(): Observable<string> {
+		return this._decrementLabel.subject;
+	}
+
+	getIncrementLabel(): Observable<string> {
+		return this._incrementLabel.subject;
 	}
 
 	/**
@@ -261,3 +337,4 @@ export class Number implements ControlValueAccessor {
 		return value instanceof TemplateRef;
 	}
 }
+export { NumberComponent as Number };
